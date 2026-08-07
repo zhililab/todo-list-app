@@ -1,98 +1,67 @@
 # AI-native Todo
 
-一个支持任务标签、上下文、AI 辅助与导出的双语待办应用。
+一个支持任务类型、上下文、验收标准、AI 下一步 Prompt、今日计划与 Obsidian 导出的双语待办应用。
 
-This is a bilingual todo app with task types, context fields, AI assist and one-click Obsidian export.
+An AI-native bilingual todo app with task types, context fields, acceptance criteria, next-step prompts, today plan, and Obsidian export.
 
-## 项目定位 | Why this project
+## 需求核对（按你的要求）
 
-- 任务入口从“想到啥就写啥”到“可执行的下一步”
-- 支持任务类型、优先级、预估时长、项目维度
-- 支持上下文、验收标准、下一步 AI prompt
-- 支持今日计划视图与状态看板
-- 支持 AI 规划（可选 OpenAI）和本地降级方案
-- 一键导出 Obsidian Markdown
-- 支持中文/English 两种界面
+- [x] 任务支持类型（Personal / Code / Product / Learning / Life）
+- [x] 任务支持上下文字段（Context）
+- [x] 任务支持验收标准（Acceptance Criteria）
+- [x] 任务支持下一步 prompt（Next AI Prompt）
+- [x] 一键导出 Obsidian Markdown（`todo-list-app-YYYY-MM-DD.md`）
+- [x] 今日计划视图（Today Top 5 / 今日计划面板）
 
-## Repository name (规范)
+## Repository
 
-当前仓库约定名建议使用：`todo-list-app`
-
-Current recommended repository name: `todo-list-app`
-
-> 说明：当前本地目录为 `todolist_app`，后续若需与 GitHub 名称完全一致，可在 GitHub 侧重命名。
-
-## Feature overview
-
-- ✅ Add task
-- ✅ Mark as completed / delete
-- ✅ Filter: All / Active / Completed / High Priority
-- ✅ Type filter (Personal / Code / Product / Learn / Life)
-- ✅ AI assistant actions: breakdown, summary, today plan
-- ✅ Context area: context / acceptance criteria / next prompt
-- ✅ Health score and quick suggestions
-- ✅ Export current queue as Obsidian Markdown
-- ✅ Bilingual UI (Chinese + English)
-
-## 快速开始 | Quick start
-
-1. 启动服务
-
-```bash
-cd /Users/lizhi/code/todolist_app
-python3 -m http.server
-```
-
-2. 打开：`http://localhost:8000`
-
-## 截图 | Screenshots
-
-### Main / Main
-
-![Main interface](screenshots/main-interface.svg)
-
-### Completed list / Completed tasks
-
-![Completed tasks](screenshots/completed-tasks.svg)
+当前仓库名已统一为：`todo-list-app`
 
 ## 核心功能
 
-### 中文
+- 支持中文 / English 两种界面（左侧语言切换）
+- 任务类型、优先级、预估时长（类型会用于过滤和看板统计）
+- 支持 AI 辅助：智能拆解、复盘、今日计划（无 API Key 自动本地降级）
+- 健康分 + 下一步建议
+- 一键导出 Obsidian Markdown
 
-- 支持任务类型（个人 / 代码 / 产品 / 学习 / 生活）
-- 支持任务优先级与预估
-- 支持任务上下文、验收标准、AI 下一步 Prompt
-- 支持任务队列 AI 拆解、复盘、今日计划生成（有 OpenAI Key 时调用 API，无 Key 时使用本地规划器）
-- 支持今日计划 Top5 视图
-- 支持 Obsidian Markdown 一键导出（`todo-list-app-YYYY-MM-DD.md`）
-
-### English
-
-- Support task types (Personal / Code / Product / Learning / Life)
-- Track task priority and estimate
-- Maintain task context, acceptance criteria, and next prompt
-- AI assist: breakdown, review, and today plan (OpenAI if key exists, local fallback otherwise)
-- Today plan Top 5 panel
-- One-click export Markdown for Obsidian (`todo-list-app-YYYY-MM-DD.md`)
-
-## 文件结构 | Project structure
+## 文件结构
 
 ```text
 /
-├── index.html       # UI shell and i18n labels
-├── styles.css       # Visual style
-├── app.js           # All interaction and i18n runtime logic
-└── README.md        # Project docs
+├── index.html       # UI + i18n 标记
+├── styles.css       # 页面样式
+├── app.js           # 任务管理 / AI 流程 / 多语言逻辑
+└── README.md        # 项目说明
 ```
 
-## Language toggle
+## 快速开始
 
-Click the language selector in the left sidebar to switch between:
+```bash
+# 在项目根目录
+python3 -m http.server
+```
 
-- 中文（`zh`）
-- English（`en`）
+打开：`http://localhost:8000`
 
-语言配置会持久化到浏览器本地存储。
+## 截图
 
-The selected language is persisted in localStorage.
+### Main
 
+![Main interface](screenshots/main-interface.svg)
+
+### Completed
+
+![Completed tasks](screenshots/completed-tasks.svg)
+
+## 配置说明
+
+- 本地语言偏好与 API Key 会持久化到 `localStorage`
+- `.env` 不需要配置（纯前端，API Key 在浏览器输入框中保存到本地）
+
+## 运行说明（English）
+
+1. Start service: `python3 -m http.server`
+2. Open `http://localhost:8000`
+3. Add tasks, set task type/priority, fill context + acceptance criteria, run AI features if needed
+4. Export to Obsidian Markdown for daily planning/archive
