@@ -1,114 +1,1268 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // DOM elements
     const taskInput = document.getElementById('task-input');
+    const taskTypeSelect = document.getElementById('task-type');
     const addTaskBtn = document.getElementById('add-task');
     const taskList = document.getElementById('task-list');
     const filterBtns = document.querySelectorAll('.filter-btn');
+    const typeFilterSelect = document.getElementById('type-filter');
     const taskCount = document.getElementById('task-count');
     const clearCompletedBtn = document.getElementById('clear-completed');
+    const quickFocusBtn = document.getElementById('quick-focus');
+    const planTodayBtn = document.getElementById('plan-today');
+    const todayPlanList = document.getElementById('today-plan-list');
+    const todayPlanDate = document.getElementById('today-plan-date');
 
-    // Load tasks from localStorage
-    let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+    const statTotal = document.getElementById('stat-total');
+    const statActive = document.getElementById('stat-active');
+    const statCompleted = document.getElementById('stat-completed');
+    const statHealth = document.getElementById('stat-health');
+    const sideHealth = document.getElementById('side-health');
+    const sideHealthLabel = document.getElementById('side-health-label');
+    const nextAction = document.getElementById('next-action');
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
+    const progressTrack = document.querySelector('.progress-track');
+    const currentDate = document.getElementById('current-date');
 
-    // Render tasks
-    function renderTasks(filter = 'all') {
-        taskList.innerHTML = '';
+    const openaiKeyInput = document.getElementById('openai-key');
+    const goalInput = document.getElementById('goal-input');
+    const aiBreakdownBtn = document.getElementById('ai-breakdown');
+    const aiSummaryBtn = document.getElementById('ai-summary');
+    const aiStatus = document.getElementById('ai-status');
+    const aiOutput = document.getElementById('ai-output');
+    const addAiTasksBtn = document.getElementById('add-ai-tasks');
 
-        const filteredTasks = tasks.filter(task => {
-            if (filter === 'active') return !task.completed;
-            if (filter === 'completed') return task.completed;
-            return true;
-        });
+    const selectedTaskLabel = document.getElementById('selected-task-label');
+    const taskContextInput = document.getElementById('task-context');
+    const taskAcceptanceInput = document.getElementById('task-acceptance');
+    const taskPromptInput = document.getElementById('task-prompt');
+    const saveNotesBtn = document.getElementById('save-notes');
+    const exportObsidianBtn = document.getElementById('export-obsidian');
 
-        filteredTasks.forEach((task, index) => {
-            const taskItem = document.createElement('li');
-            taskItem.classList.add('task-item');
+    const STORAGE_KEYS = {
+        TASKS: 'tasks',
+        OPENAI_KEY: 'openai_api_key',
+        LANG: 'todo_i18n_lang'
+    };
+    const langSelect = document.getElementById('lang-select');
 
-            taskItem.innerHTML = `
-                <input type="checkbox" class="task-checkbox" data-index="${index}" ${task.completed ? 'checked' : ''}>
-                <span class="task-text ${task.completed ? 'completed' : ''}">${task.text}</span>
-                <button class="delete-btn" data-index="${index}">Delete</button>
-            `;
+    const I18N = {
+        zh: {
+            appTitle: 'AI-native Todo',
+            personalWorkspace: '个人工作台',
+            language: '语言',
+            quickFocus: '+ 捕捉想法',
+            mainNav: '主导航',
+            mainNavAria: '主导航',
+            navTodayPlan: '今日计划',
+            navInbox: 'AI 收件箱',
+            navAgentNotes: 'Agent Notes',
+            navHealth: '健康分',
+            myProjects: '我的项目',
+            todayAIAdvice: '今日 AI 建议',
+            healthWait: '等待任务输入',
+            healthGood: '节奏很稳',
+            healthForward: '可以推进',
+            healthNeedContext: '需要补上下文',
+            healthBreakDown: '先降噪拆小',
+            healthLabel: '健康分',
+            generateTodayPlan: '生成今日计划',
+            inboxTag: '自然语言收件箱',
+            headline: '把脑内噪音变成可执行下一步',
+            taskInputPlaceholder: '例如：梳理 AI-native todo 的今天目标',
+            captureTask: '捕捉',
+            taskTypeLabel: '任务类型',
+            executionStatus: '执行态势',
+            progressText: '完成率 {completionRate}% · 健康分 {healthScore}',
+            progressAriaLabel: '任务完成进度',
+            statTotal: '全部任务',
+            statActive: '进行中',
+            statCompleted: '已完成',
+            statHealth: '健康分',
+            todayPlan: '今日计划视图',
+            todayTop5: '今日 Top 5',
+            filterAll: '全部',
+            filterActive: '进行中',
+            filterCompleted: '已完成',
+            filterHigh: '高优先级',
+            allTypes: '全部类型',
+            taskQueue: '任务队列',
+            tasksInProgress: '{count} 个任务进行中',
+            clearCompleted: '清除已完成',
+            aiAssistantTag: 'AI 助手',
+            assistantName: 'Agent Copilot',
+            assistantDesc: '拆解目标、生成今日计划，并保存每个任务的执行上下文。',
+            openaiKeyLabel: 'OpenAI API Key',
+            goalLabel: '目标 / 需求 / 想法',
+            goalInputPlaceholder: '例如：本周发布一个迭代说明，并同步给相关同伴。',
+            aiBreakdown: '智能拆解',
+            aiSummary: '复盘 / 下一步',
+            aiOutput: 'AI 输出',
+            aiOutputEmpty: '还没有内容。没有 API Key 时会使用本地规划器；填入 Key 后会调用 OpenAI。',
+            addToTodo: '加入待办',
+            exportObsidian: '一键导出 Obsidian Markdown',
+            notesPanelTitle: 'Agent Notes',
+            noTaskSelected: '未选择任务',
+            selectedTaskPrefix: '当前任务',
+            contextLabel: '上下文',
+            contextPlaceholder: '补充任务背景、输入来源、关联文档链接',
+            acceptanceLabel: '验收标准',
+            acceptancePlaceholder: '补充明确的可验收标准：如预期输出、验证方式、完成定义',
+            promptLabel: '下一条给 AI 的 prompt',
+            promptPlaceholder: '例如：请继续拆解这个任务的下一步。',
+            saveNotes: '保存上下文',
+            fallbackNextAction: '先捕捉一个目标，我来帮你压成下一步。',
+            noTaskHint: '还没有任务。先捕捉一个目标，我会把它压成可执行下一步。',
+            noTaskExample: '例：今天完成 AI-native todo 的 Agent Notes 体验',
+            taskContextReady: '已补上下文',
+            taskContextMissing: '未补上下文',
+            acceptanceReady: '已补验收标准',
+            acceptanceMissing: '未补验收标准',
+            chipContext: '上下文',
+            chipAcceptance: '验收',
+            chipPrompt: 'Prompt',
+            notesBtn: '上下文',
+            splitBtn: '拆小',
+            deleteBtn: '删除',
+            noTaskInPlan: '暂无进行中任务。先添加任务并设置类型/上下文。',
+            planTopItem: '{index}. {text}（{effort} · {priority}）',
+            planBadgeNoContext: '未补上下文',
+            planBadgeNoAcceptance: '未补验收标准',
+            aiWorking: '处理中...',
+            aiBreakdownBusy: '正在调用 AI 拆解...',
+            aiBreakdownLocal: '使用本地规划器拆解...',
+            aiSummaryBusy: '正在生成复盘...',
+            aiSummaryLocal: '使用本地状态生成复盘...',
+            aiPlanBusy: '正在生成今日计划...',
+            aiPlanLocal: '使用本地队列生成今日计划...',
+            aiPlanDone: '今日计划已生成。',
+            aiNoTaskToBreakdown: '先输入一个目标或想法。',
+            aiNoImport: '当前没有可导入的 AI 任务。请先执行“智能拆解”。',
+            aiImported: 'AI 任务已加入待办。',
+            aiSaved: 'Agent Notes 已保存。',
+            aiNoSave: '先选中一个任务再保存。',
+            aiExported: '已导出：{fileName}，可直接放入 Obsidian。',
+            aiExportEmpty: '队列清空了。可以做一次复盘，或者捕捉下一个目标。',
+            aiExportGenerated: '队列清空了。可以做一次复盘，或者捕捉下一个目标。',
+            nextActionEmpty: '队列清空了。可以做一次复盘，或者捕捉下一个目标。',
+            nextActionNoContext: '下一步：给「{text}」补 1 条上下文或验收标准。',
+            nextActionWithEffort: '下一步：推进「{text}」，建议投入 {effort}。',
+            noTaskInPlan: '暂无进行中任务。先添加任务并设置类型/上下文。',
+            noActiveTasks: '当前暂无进行中任务。',
+            currentActiveTasks: '当前已有进行中任务：{tasks}',
+            noTasksLabel: '暂无',
+            empty: '暂无',
+            activeTasksLabel: '进行中任务',
+            completedTasksLabel: '已完成任务',
+            localBreakdownStep1: '明确「{subject}」的完成定义和不可做范围',
+            localBreakdownStep2: '列出当前已有资料、相关文件、约束和风险',
+            localBreakdownStep3: '拆出 1 个 30 分钟内能完成的最小版本',
+            localBreakdownStep4: '完成核心实现，并记录关键决策到 Agent Notes',
+            localBreakdownStep5: '补一条验收标准和一次手动验证记录',
+            localBreakdownStep6: '复盘剩余问题，生成下一条交给 AI 的 prompt',
+            aiBreakdownResult: '已生成 {count} 条任务，可一键加入待办。',
+            localSummaryLine1: '进展概览：已完成 {completed} 条，进行中 {active} 条。当前健康分 {health}，{healthLabel}。',
+            localSummaryTitle: '下一步建议：',
+            localSummaryStep1: '1. 先推进高优先级任务：{text}',
+            localSummaryStep1Fallback: '1. 选择一个最小任务推进，不要同时开太多分支。',
+            localSummaryStep2: '2. 给「{text}」补上下文和验收标准。',
+            localSummaryStep2Fallback: '2. 已有任务上下文不错，可以直接进入执行。',
+            localSummaryStep3: '3. 今日只保留 3 个主任务：{tasks}',
+            aiSummaryDone: '复盘已生成。',
+            planItem: '{index}. {text}（{effort} · {priority}）',
+            planFirstStep: '第一步：{next}',
+            todayPlanPrompt: '你是今日计划助手。请只保留最关键的 3-5 件事，按上午/下午/收尾组织，最后给出第一步。中文输出。',
+            aiBreakdownPrompt: '你是 AI-native todo 的任务规划助手。请给出 5-8 条可执行、可勾选的短任务清单，每行一条，不要额外解释。任务要包含明确动作，避免空泛。语言用中文。',
+            aiSummaryPrompt: '你是项目助理。请输出：1）进展概览（2-3句）；2）下一步建议（3条）；3）最适合交给 AI 的下一条 prompt。语言简洁。',
+            buildDefaultPrompt: '请帮我完成这个任务：{text}\\n类型：{type}\\n项目：{project}\\n优先级：{priority}\\n请先确认目标，再给出最小可执行步骤和验收方式。',
+            planEstimateLabel: '预估',
+            buildAiPromptForTask: '请帮我执行这条任务：{text}\\n先给出最小步骤，再说明如何验证完成。',
+            obsidianTitle: 'Todo 导出',
+            obsidianExportTime: '导出时间',
+            obsidianTaskList: '任务清单',
+            obsidianStatusLabel: '状态',
+            obsidianStatusDone: '[x] 已完成',
+            obsidianStatusActive: '[ ] 进行中',
+            obsidianProjectLabel: '项目',
+            obsidianPriorityLabel: '优先级',
+            obsidianEffortLabel: '预计时长',
+            aiNoAction: '当前没有可导入的 AI 任务。请先执行“智能拆解”。',
+            taskSavedToLocal: '已使用本地规划器，当前任务队列已同步。',
+            aiErrorCallFailed: 'AI 请求失败（{status}）：{error}',
+            aiErrorEmpty: 'AI 返回内容为空，请重试。',
+            aiErrorFallback: '调用失败，请稍后重试。',
+            aiStatusSaved: '已保存',
+            taskType: {
+                personal: '个人',
+                code: '代码',
+                product: '产品',
+                learning: '学习',
+                life: '生活'
+            },
+            placeholderOpenAiKey: 'sk-...',
+            priorityHigh: '高优先级',
+            priorityMedium: '中优先级',
+            priorityLow: '低优先级',
+            contextLabelShort: '上下文',
+            acceptanceLabelShort: '验收',
+            planSummaryTitle: '今日计划：',
+            emptyTaskPlan: '队列为空。捕捉一个目标。'
+        },
+        en: {
+            appTitle: 'AI-native Todo',
+            personalWorkspace: 'Personal Workspace',
+            language: 'Language',
+            quickFocus: '+ Capture idea',
+            mainNav: 'Main navigation',
+            mainNavAria: 'Main navigation',
+            navTodayPlan: 'Today Plan',
+            navInbox: 'AI Inbox',
+            navAgentNotes: 'Agent Notes',
+            navHealth: 'Health Score',
+            myProjects: 'My Projects',
+            todayAIAdvice: 'Today AI Advice',
+            healthWait: 'Waiting for tasks',
+            healthGood: 'Steady pace',
+            healthForward: 'Ready to move',
+            healthNeedContext: 'Need more context',
+            healthBreakDown: 'Decompose task chunks',
+            healthLabel: 'Health',
+            generateTodayPlan: 'Generate Today Plan',
+            inboxTag: 'Natural language inbox',
+            headline: 'Turn scattered thoughts into executable next steps',
+            taskInputPlaceholder: 'For example: clarify goals for today around AI-native todo',
+            captureTask: 'Capture',
+            taskTypeLabel: 'Task Type',
+            executionStatus: 'Execution status',
+            progressText: 'Completion {completionRate}% · Health {healthScore}',
+            progressAriaLabel: 'Task completion progress',
+            statTotal: 'All tasks',
+            statActive: 'Active',
+            statCompleted: 'Done',
+            statHealth: 'Health Score',
+            todayPlan: 'Today Plan',
+            todayTop5: 'Today Top 5',
+            filterAll: 'All',
+            filterActive: 'Active',
+            filterCompleted: 'Completed',
+            filterHigh: 'High priority',
+            allTypes: 'All types',
+            taskQueue: 'Task Queue',
+            tasksInProgress: '{count} active tasks',
+            clearCompleted: 'Clear completed',
+            aiAssistantTag: 'AI Assistant',
+            assistantName: 'Agent Copilot',
+            assistantDesc: 'Break down goals, generate a daily plan, and save execution context for each task.',
+            openaiKeyLabel: 'OpenAI API Key',
+            goalLabel: 'Goal / Requirement / Idea',
+            goalInputPlaceholder: 'For example: release an iteration note and share with team.',
+            aiBreakdown: 'AI Breakdown',
+            aiSummary: 'Review / Next step',
+            aiOutput: 'AI Output',
+            aiOutputEmpty: 'No output yet. Without API key, a local planner is used.',
+            addToTodo: 'Add to Todo',
+            exportObsidian: 'Export Obsidian Markdown',
+            notesPanelTitle: 'Agent Notes',
+            noTaskSelected: 'No task selected',
+            selectedTaskPrefix: 'Current task',
+            contextLabel: 'Context',
+            contextPlaceholder: 'Add task context, sources, and related docs',
+            acceptanceLabel: 'Acceptance Criteria',
+            acceptancePlaceholder: 'Add clear acceptance criteria: expected output, validation method, completion definition',
+            promptLabel: 'Next AI prompt',
+            promptPlaceholder: 'For example: continue to split this task into smaller steps.',
+            saveNotes: 'Save Notes',
+            fallbackNextAction: 'Capture one goal first, then I can break it into next steps.',
+            noTaskHint: "No tasks yet. Capture one goal and I'll convert it into next steps.",
+            noTaskExample: 'Example: complete the Agent Notes experience in AI-native todo today',
+            taskContextReady: 'Context added',
+            taskContextMissing: 'Context missing',
+            acceptanceReady: 'Acceptance added',
+            acceptanceMissing: 'Acceptance missing',
+            chipContext: 'Context',
+            chipAcceptance: 'Acceptance',
+            chipPrompt: 'Prompt',
+            notesBtn: 'Notes',
+            splitBtn: 'Split',
+            deleteBtn: 'Delete',
+            noTaskInPlan: 'No active tasks yet. Add a task and set type/context first.',
+            planTopItem: '{index}. {text} ({effort} · {priority})',
+            planBadgeNoContext: 'No context',
+            planBadgeNoAcceptance: 'No acceptance',
+            aiWorking: 'Processing...',
+            aiBreakdownBusy: 'Calling AI to split tasks...',
+            aiBreakdownLocal: 'Using local planner...',
+            aiSummaryBusy: 'Generating review...',
+            aiSummaryLocal: 'Using local review generator...',
+            aiPlanBusy: 'Generating today plan...',
+            aiPlanLocal: 'Using local plan generator...',
+            aiPlanDone: 'Today plan generated.',
+            aiNoTaskToBreakdown: 'Please enter a goal or idea first.',
+            aiNoImport: 'No AI tasks available. Run "AI Breakdown" first.',
+            aiImported: 'AI tasks added to todo.',
+            aiSaved: 'Agent Notes saved.',
+            aiNoSave: 'Please select a task first.',
+            aiExported: 'Exported: {fileName}. You can import it into Obsidian.',
+            aiExportEmpty: 'The queue is empty. Review or capture a new goal.',
+            aiExportGenerated: 'The queue is empty. Review or capture a new goal.',
+            nextActionEmpty: 'The queue is empty. You can review completed work or capture a new goal.',
+            nextActionNoContext: 'Next: add one context or acceptance criteria to "{text}".',
+            nextActionWithEffort: 'Next: proceed with "{text}", estimated effort {effort}.',
+            noTaskInPlan: 'No active tasks yet. Add a task and set type/context first.',
+            noActiveTasks: 'No active tasks.',
+            currentActiveTasks: 'Current active tasks: {tasks}',
+            noTasksLabel: 'None',
+            empty: 'None',
+            activeTasksLabel: 'Active tasks',
+            completedTasksLabel: 'Completed tasks',
+            localBreakdownStep1: 'Clarify the completion definition and out-of-scope for "{subject}".',
+            localBreakdownStep2: 'List current references, constraints, and risks.',
+            localBreakdownStep3: 'Extract one minimum task that can finish within 30 minutes.',
+            localBreakdownStep4: 'Implement core work and record key decisions in Agent Notes.',
+            localBreakdownStep5: 'Add one acceptance criterion and one manual verification note.',
+            localBreakdownStep6: 'Review remaining gaps and generate the next AI prompt.',
+            aiBreakdownResult: 'Generated {count} tasks, ready to import.',
+            localSummaryLine1: 'Progress: completed {completed} tasks, active {active} tasks. Health score is {health}. {healthLabel}.',
+            localSummaryTitle: 'Next suggestions:',
+            localSummaryStep1: '1. Prioritize the urgent task: {text}',
+            localSummaryStep1Fallback: '1. Pick one smallest task and continue; avoid too many contexts.',
+            localSummaryStep2: '2. Add context and acceptance criteria for "{text}".',
+            localSummaryStep2Fallback: '2. Task context is enough, start execution directly.',
+            localSummaryStep3: '3. Keep only 3 main tasks today: {tasks}',
+            aiSummaryDone: 'Review generated.',
+            planItem: '{index}. {text} ({effort} · {priority})',
+            planFirstStep: 'First step: {next}',
+            todayPlanPrompt: 'You are a daily planning assistant. Keep only the top 3-5 items, organize by morning/afternoon/wrap up, and output the first step.',
+            aiBreakdownPrompt: 'You are a task-planning assistant. Return 5-8 concrete checklist items, one line each. No extra explanation. Keep the output in English.',
+            aiSummaryPrompt: 'You are a project assistant. Output: 1) a short progress summary (2-3 lines), 2) next suggestions (3 items), 3) a practical next prompt for AI.',
+            buildDefaultPrompt: 'Please help me complete this task: {text}\\nType: {type}\\nProject: {project}\\nPriority: {priority}\\nConfirm objective first, then provide minimal executable steps and acceptance criteria.',
+            planEstimateLabel: 'Est.',
+            buildAiPromptForTask: 'Please execute this task: {text}\\nFirst provide minimal steps, then verification checks.',
+            obsidianTitle: 'Todo Export',
+            obsidianExportTime: 'Export time',
+            obsidianTaskList: 'Task list',
+            obsidianStatusLabel: 'Status',
+            obsidianStatusDone: '[x] Done',
+            obsidianStatusActive: '[ ] Active',
+            obsidianProjectLabel: 'Project',
+            obsidianPriorityLabel: 'Priority',
+            obsidianEffortLabel: 'Estimate',
+            aiNoAction: 'No AI tasks available. Run AI Breakdown first.',
+            taskSavedToLocal: 'Using local planner, todo queue synced.',
+            aiErrorCallFailed: 'AI request failed ({status}): {error}',
+            aiErrorEmpty: 'Empty AI output, please retry.',
+            aiErrorFallback: 'Failed to generate result, please retry later.',
+            aiStatusSaved: 'Saved',
+            taskType: {
+                personal: 'Personal',
+                code: 'Code',
+                product: 'Product',
+		learning: 'Learning',
+                life: 'Life'
+            },
+            placeholderOpenAiKey: 'sk-...',
+            priorityHigh: 'High',
+            priorityMedium: 'Medium',
+            priorityLow: 'Low',
+            contextLabelShort: 'Context',
+            acceptanceLabelShort: 'Acceptance',
+            planSummaryTitle: 'Today plan:',
+            emptyTaskPlan: 'No active tasks. Capture one goal first.'
+        }
+    };
+    let currentLang = localStorage.getItem(STORAGE_KEYS.LANG) === 'en' ? 'en' : 'zh';
 
-            taskList.appendChild(taskItem);
-        });
+    const FILTERS = {
+        ALL: 'all',
+        ACTIVE: 'active',
+        COMPLETED: 'completed',
+        HIGH: 'high'
+    };
 
-        // Update task count
-        const activeTasks = tasks.filter(task => !task.completed).length;
-        taskCount.textContent = `${activeTasks} ${activeTasks === 1 ? 'task' : 'tasks'} left`;
+    const OPENAI_API_URL = 'https://api.openai.com/v1/responses';
+    const OPENAI_MODEL = 'gpt-4.1-mini';
+    const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+    const TASK_TYPES = ['个人', '代码', '产品', '学习', '生活'];
+    const DEFAULT_TASK_TYPE = '个人';
+
+    let currentFilter = FILTERS.ALL;
+    let currentTypeFilter = 'all';
+    let tasks = loadTasks();
+    let aiSuggestedTasks = [];
+    let selectedTaskId = tasks[0]?.id || null;
+
+    openaiKeyInput.value = localStorage.getItem(STORAGE_KEYS.OPENAI_KEY) || '';
+    if (langSelect) langSelect.value = currentLang;
+
+    function locale() {
+        return currentLang === 'en' ? 'en-US' : 'zh-CN';
     }
 
-    // Add task
-    function addTask() {
-        const text = taskInput.value.trim();
-        if (text !== '') {
-            tasks.push({ text, completed: false });
-            saveTasks();
-            renderTasks();
-            taskInput.value = '';
+    function formatTemplate(template, vars = {}) {
+        if (typeof template !== 'string') return '';
+        return template.replace(/\{(\w+)\}/g, (match, key) => String(vars[key] ?? match));
+    }
+
+    function getI18nValue(dictionary, key) {
+        return String(key)
+            .split('.')
+            .reduce((acc, part) => (acc && typeof acc === 'object' ? acc[part] : undefined), dictionary);
+    }
+
+    function t(key, vars) {
+        const dict = I18N[currentLang] || I18N.zh;
+        const fallback = getI18nValue(I18N.zh, key);
+        const value = getI18nValue(dict, key) || fallback || key;
+
+        if (typeof value === 'string') {
+            return vars ? formatTemplate(value, vars) : value;
+        }
+
+        return value;
+    }
+
+    function applyI18n() {
+        const html = document.documentElement;
+        html.lang = locale() === 'en-US' ? 'en' : 'zh-CN';
+
+        document.querySelectorAll('[data-i18n]').forEach(node => {
+            const key = node.dataset.i18n;
+            const value = t(key);
+            if (typeof value === 'string') node.textContent = value;
+        });
+
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(node => {
+            const key = node.dataset.i18nPlaceholder;
+            if (key) node.placeholder = t(key);
+        });
+
+        document.querySelectorAll('[data-i18n-aria-label]').forEach(node => {
+            const key = node.dataset.i18nAriaLabel;
+            if (key) node.setAttribute('aria-label', t(key));
+        });
+
+        const options = document.querySelectorAll('option[data-i18n]');
+        options.forEach(option => {
+            const key = option.dataset.i18n;
+            const value = t(key);
+            if (typeof value === 'string') option.textContent = value;
+        });
+
+        if (langSelect) langSelect.setAttribute('aria-label', `${t('language')}: ${currentLang === 'en' ? 'English' : '中文'}`);
+        if (openaiKeyInput) openaiKeyInput.placeholder = t('placeholderOpenAiKey');
+        setCurrentDate();
+        renderTasks(currentFilter);
+    }
+
+    function setUiText(key, element, vars) {
+        if (!element) return;
+        const message = t(key, vars);
+        element.textContent = typeof message === 'string' ? message : '';
+    }
+
+    function createId() {
+        if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+        return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function inferMeta(text) {
+        const lower = text.toLowerCase();
+        const highWords = ['上线', '发布', '修复', '紧急', '今天', 'deadline', 'bug', '安全', '阻塞'];
+        const lowWords = ['阅读', '整理', '以后', ' someday ', '备忘', '想法'];
+        const codeWords = ['code', 'api', '测试', 'bug', '部署', 'repo', 'codex', 'claude', 'cursor', '组件'];
+        const productWords = ['用户', '产品', '需求', '页面', '体验', '上线', '设计'];
+        const lifeWords = ['买', '健身', '运动', '吃', '家', '缴费', '约'];
+        const learningWords = ['学习', '阅读', '课程', '笔记', '研究'];
+
+        const priority = highWords.some(word => lower.includes(word))
+            ? 'high'
+            : lowWords.some(word => lower.includes(word))
+                ? 'low'
+                : 'medium';
+        const effortMatch = text.match(/(\d+)\s*(分钟|min|小时|h)/i);
+        const effort = effortMatch ? effortMatch[0].replace(/\s+/g, '') : priority === 'high' ? '45分钟' : '25分钟';
+        const project = codeWords.some(word => lower.includes(word))
+            ? '代码'
+            : productWords.some(word => lower.includes(word))
+                ? '产品'
+                : learningWords.some(word => lower.includes(word))
+                    ? '学习'
+                    : lifeWords.some(word => lower.includes(word))
+                        ? '生活'
+                        : '个人';
+
+        return { priority, effort, project };
+    }
+
+    function inferType(text) {
+        const lower = text.toLowerCase();
+        if (/\b(api|deploy|pr|merge|commit|repo|code|component|frontend|backend)\b/.test(lower)) return '代码';
+        if (/(产品|需求|体验|页面|设计|迭代|上线|发布)/.test(text)) return '产品';
+        if (/(学习|课程|阅读|笔记|复盘|调研)/.test(text)) return '学习';
+        if (/(生活|购物|健身|运动|家|缴费|约|出行)/.test(text)) return '生活';
+        return DEFAULT_TASK_TYPE;
+    }
+
+    function normalizeTask(task) {
+        const text = typeof task?.text === 'string' ? task.text.trim() : '';
+        const meta = inferMeta(text);
+
+        return {
+            id: typeof task?.id === 'string' ? task.id : createId(),
+            text,
+            completed: Boolean(task?.completed),
+            type: TASK_TYPES.includes(task?.type) ? task.type : inferType(text),
+            priority: ['high', 'medium', 'low'].includes(task?.priority) ? task.priority : meta.priority,
+            effort: typeof task?.effort === 'string' && task.effort ? task.effort : meta.effort,
+            project: typeof task?.project === 'string' && task.project ? task.project : meta.project,
+            createdAt: typeof task?.createdAt === 'string' ? task.createdAt : new Date().toISOString(),
+            context: typeof task?.context === 'string' ? task.context : '',
+            acceptance: typeof task?.acceptance === 'string' ? task.acceptance : '',
+            nextPrompt: typeof task?.nextPrompt === 'string' ? task.nextPrompt : ''
+        };
+    }
+
+    function loadTasks() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEYS.TASKS);
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) return [];
+
+            return parsed
+                .filter(task => task && typeof task.text === 'string' && task.text.trim())
+                .map(normalizeTask);
+        } catch (_error) {
+            return [];
         }
     }
 
-    // Save tasks to localStorage
     function saveTasks() {
-        localStorage.setItem('tasks', JSON.stringify(tasks));
+        localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
     }
 
-    // Toggle task completion
-    function toggleTask(index) {
-        tasks[index].completed = !tasks[index].completed;
+    function normalizeFilter(filter) {
+        if (Object.values(FILTERS).includes(filter)) return filter;
+        return FILTERS.ALL;
+    }
+
+    function priorityLabel(priority) {
+        return {
+            high: t('priorityHigh'),
+            medium: t('priorityMedium'),
+            low: t('priorityLow')
+        }[priority] || t('priorityMedium');
+    }
+
+    function calculateHealthScore() {
+        if (!tasks.length) return 0;
+
+        const completed = tasks.filter(task => task.completed).length;
+        const active = tasks.length - completed;
+        const withContext = tasks.filter(task => task.context || task.acceptance || task.nextPrompt).length;
+        const highOpen = tasks.filter(task => !task.completed && task.priority === 'high').length;
+        const completionScore = Math.round((completed / tasks.length) * 45);
+        const contextScore = Math.round((withContext / tasks.length) * 35);
+        const loadScore = active <= 5 ? 20 : Math.max(4, 20 - (active - 5) * 3);
+        const penalty = Math.min(15, Math.max(0, highOpen - 2) * 5);
+
+        return Math.max(0, Math.min(100, completionScore + contextScore + loadScore - penalty));
+    }
+
+    function healthLabel(score) {
+        if (!score) return t('healthWait');
+        if (score >= 80) return t('healthGood');
+        if (score >= 60) return t('healthForward');
+        if (score >= 40) return t('healthNeedContext');
+        return t('healthBreakDown');
+    }
+
+    function getNextAction() {
+        const open = tasks
+            .filter(task => !task.completed)
+            .sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
+
+        if (!open.length) return t('nextActionEmpty');
+        const task = open[0];
+        if (!task.acceptance && !task.context) return t('nextActionNoContext', { text: task.text });
+        return t('nextActionWithEffort', { text: task.text, effort: task.effort });
+    }
+
+    function updateStats() {
+        const total = tasks.length;
+        const active = tasks.filter(task => !task.completed).length;
+        const completed = total - active;
+        const completionRate = total === 0 ? 0 : Math.round((completed / total) * 100);
+        const healthScore = calculateHealthScore();
+
+        statTotal.textContent = String(total);
+        statActive.textContent = String(active);
+        statCompleted.textContent = String(completed);
+        statHealth.textContent = String(healthScore);
+        sideHealth.textContent = String(healthScore);
+        sideHealthLabel.textContent = healthLabel(healthScore);
+        taskCount.textContent = t('tasksInProgress', { count: active });
+        nextAction.textContent = getNextAction();
+        progressFill.style.width = `${completionRate}%`;
+        progressText.textContent = t('progressText', { completionRate, healthScore });
+        if (progressTrack) {
+            progressTrack.setAttribute('aria-valuenow', String(completionRate));
+        }
+    }
+
+    function setCurrentDate() {
+        if (!currentDate) return;
+        const formatted = new Date().toLocaleDateString(locale(), {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            weekday: 'short'
+        });
+        currentDate.textContent = formatted;
+    }
+
+    function setActiveFilterButton(filter) {
+        filterBtns.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.filter === filter);
+        });
+    }
+
+    function setActiveTypeFilter(value) {
+        const normalized = value === 'all' || TASK_TYPES.includes(value) ? value : 'all';
+        currentTypeFilter = normalized;
+        if (typeFilterSelect) typeFilterSelect.value = normalized;
+    }
+
+    function buildDefaultPrompt(task) {
+        return t('buildDefaultPrompt', {
+            text: task.text,
+            type: task.type,
+            project: task.project,
+            priority: priorityLabel(task.priority)
+        });
+    }
+
+    function createTaskItem(task) {
+        const taskItem = document.createElement('li');
+        taskItem.classList.add('task-item');
+        taskItem.classList.toggle('selected', task.id === selectedTaskId);
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.classList.add('task-checkbox');
+        checkbox.dataset.id = task.id;
+        checkbox.checked = task.completed;
+
+        const taskBody = document.createElement('div');
+        taskBody.classList.add('task-body');
+
+        const topLine = document.createElement('div');
+        topLine.classList.add('task-topline');
+
+        const taskText = document.createElement('span');
+        taskText.classList.add('task-text');
+        if (task.completed) taskText.classList.add('completed');
+        taskText.textContent = task.text;
+
+        const taskMeta = document.createElement('span');
+        taskMeta.classList.add('task-meta');
+        taskMeta.textContent = `${task.type} · ${task.project} · ${priorityLabel(task.priority)} · ${task.effort}`;
+
+        const chips = document.createElement('div');
+        chips.classList.add('task-chips');
+        ['context', 'acceptance', 'nextPrompt'].forEach(key => {
+            if (!task[key]) return;
+            const chip = document.createElement('span');
+            chip.textContent = key === 'context' ? t('chipContext') : key === 'acceptance' ? t('chipAcceptance') : t('chipPrompt');
+            chips.appendChild(chip);
+        });
+
+        const actions = document.createElement('div');
+        actions.classList.add('task-actions');
+
+        const notesBtn = document.createElement('button');
+        notesBtn.classList.add('mini-btn');
+        notesBtn.dataset.action = 'select';
+        notesBtn.dataset.id = task.id;
+        notesBtn.textContent = t('notesBtn');
+
+        const splitBtn = document.createElement('button');
+        splitBtn.classList.add('mini-btn');
+        splitBtn.dataset.action = 'split';
+        splitBtn.dataset.id = task.id;
+        splitBtn.textContent = t('splitBtn');
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.classList.add('delete-btn');
+        deleteBtn.dataset.action = 'delete';
+        deleteBtn.dataset.id = task.id;
+        deleteBtn.textContent = t('deleteBtn');
+
+        topLine.appendChild(taskText);
+        taskBody.appendChild(topLine);
+        taskBody.appendChild(taskMeta);
+        taskBody.appendChild(chips);
+        actions.appendChild(notesBtn);
+        actions.appendChild(splitBtn);
+        actions.appendChild(deleteBtn);
+
+        taskItem.appendChild(checkbox);
+        taskItem.appendChild(taskBody);
+        taskItem.appendChild(actions);
+
+        return taskItem;
+    }
+
+    function renderEmptyState() {
+        const emptyItem = document.createElement('li');
+        emptyItem.classList.add('task-item', 'empty-state');
+
+        const emptyBody = document.createElement('div');
+        emptyBody.classList.add('task-body');
+
+        const emptyText = document.createElement('span');
+        emptyText.classList.add('task-text');
+        emptyText.textContent = t('noTaskHint');
+
+        const emptyMeta = document.createElement('span');
+        emptyMeta.classList.add('task-meta');
+        emptyMeta.textContent = t('noTaskExample');
+
+        emptyBody.appendChild(emptyText);
+        emptyBody.appendChild(emptyMeta);
+        emptyItem.appendChild(emptyBody);
+        taskList.replaceChildren(emptyItem);
+    }
+
+    function renderTasks(filter = currentFilter) {
+        currentFilter = normalizeFilter(filter);
+        setActiveFilterButton(currentFilter);
+        updateStats();
+        syncNotesPanel();
+        renderTodayPlanView();
+
+        const fragment = document.createDocumentFragment();
+        const sortedTasks = [...tasks].sort((a, b) => {
+            if (a.completed !== b.completed) return Number(a.completed) - Number(b.completed);
+            return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+        });
+
+        sortedTasks.forEach(task => {
+            const shouldRender =
+                currentFilter === FILTERS.ALL ||
+                (currentFilter === FILTERS.ACTIVE && !task.completed) ||
+                (currentFilter === FILTERS.COMPLETED && task.completed) ||
+                (currentFilter === FILTERS.HIGH && task.priority === 'high');
+            const matchType = currentTypeFilter === 'all' || task.type === currentTypeFilter;
+
+            if (shouldRender && matchType) fragment.appendChild(createTaskItem(task));
+        });
+
+        if (!fragment.childNodes.length) {
+            renderEmptyState();
+            return;
+        }
+
+        taskList.replaceChildren(fragment);
+    }
+
+    function addTask(textValue = taskInput.value.trim(), overrides = {}) {
+        const text = textValue.trim();
+        if (!text) return null;
+
+        const meta = inferMeta(text);
+        const task = normalizeTask({
+            text,
+            completed: false,
+            type: taskTypeSelect ? taskTypeSelect.value : DEFAULT_TASK_TYPE,
+            ...meta,
+            ...overrides
+        });
+
+        tasks.push(task);
+        selectedTaskId = task.id;
         saveTasks();
-        renderTasks();
+        renderTasks(currentFilter);
+        taskInput.value = '';
+        return task;
     }
 
-    // Delete task
-    function deleteTask(index) {
-        tasks.splice(index, 1);
+    function findTask(id) {
+        return tasks.find(task => task.id === id);
+    }
+
+    function toggleTask(id) {
+        const task = findTask(id);
+        if (!task) return;
+        task.completed = !task.completed;
         saveTasks();
-        renderTasks();
+        renderTasks(currentFilter);
     }
 
-    // Clear completed tasks
+    function deleteTask(id) {
+        tasks = tasks.filter(task => task.id !== id);
+        if (selectedTaskId === id) selectedTaskId = tasks[0]?.id || null;
+        saveTasks();
+        renderTasks(currentFilter);
+    }
+
     function clearCompleted() {
+        const hasCompleted = tasks.some(task => task.completed);
+        if (!hasCompleted) return;
         tasks = tasks.filter(task => !task.completed);
+        if (!tasks.some(task => task.id === selectedTaskId)) selectedTaskId = tasks[0]?.id || null;
         saveTasks();
-        renderTasks();
+        renderTasks(currentFilter);
     }
 
-    // Event listeners
-    addTaskBtn.addEventListener('click', addTask);
+    function syncNotesPanel() {
+        const task = findTask(selectedTaskId);
+        const hasTask = Boolean(task);
 
-    taskInput.addEventListener('keypress', e => {
-        if (e.key === 'Enter') addTask();
-    });
+        selectedTaskLabel.textContent = task ? task.text : t('noTaskSelected');
+        taskContextInput.value = task?.context || '';
+        taskAcceptanceInput.value = task?.acceptance || '';
+        taskPromptInput.value = task?.nextPrompt || (task ? buildDefaultPrompt(task) : '');
 
-    taskList.addEventListener('change', e => {
-        if (e.target.classList.contains('task-checkbox')) {
-            const index = parseInt(e.target.dataset.index);
-            toggleTask(index);
+        [taskContextInput, taskAcceptanceInput, taskPromptInput, saveNotesBtn].forEach(element => {
+            element.disabled = !hasTask;
+        });
+    }
+
+    function saveSelectedNotes() {
+        const task = findTask(selectedTaskId);
+        if (!task) return;
+
+        task.context = taskContextInput.value.trim();
+        task.acceptance = taskAcceptanceInput.value.trim();
+        task.nextPrompt = taskPromptInput.value.trim();
+        saveTasks();
+        renderTasks(currentFilter);
+        setAiStatus(t('aiSaved'));
+    }
+
+    function renderTodayPlanView() {
+        if (!todayPlanList || !todayPlanDate) return;
+
+        const today = new Date().toLocaleDateString(locale(), {
+            month: 'long',
+            day: 'numeric',
+            weekday: 'short'
+        });
+        const topTitle = t('todayTop5');
+        todayPlanDate.textContent = `${today} · ${topTitle}`;
+
+        const active = tasks
+            .filter(task => !task.completed)
+            .sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority])
+            .slice(0, 5);
+
+        todayPlanList.replaceChildren();
+
+        if (!active.length) {
+            const empty = document.createElement('li');
+            empty.className = 'today-plan-list-empty';
+            empty.textContent = t('noTaskInPlan');
+            todayPlanList.appendChild(empty);
+            return;
+        }
+
+        active.forEach((task, index) => {
+            const item = document.createElement('li');
+            item.className = 'plan-item';
+            const hasContext = task.context ? t('taskContextReady') : t('taskContextMissing');
+            const hasAcceptance = task.acceptance ? t('acceptanceReady') : t('acceptanceMissing');
+            item.innerHTML = `<strong>${t('planTopItem', { index: index + 1, text: task.text, effort: task.effort, priority: priorityLabel(task.priority) })}</strong>
+                <span>${task.type} / ${priorityLabel(task.priority)} / ${t('planEstimateLabel')} ${task.effort}</span>
+                <span class="plan-badge">
+                    ${hasContext}
+                    <span>·</span>
+                    ${hasAcceptance}
+                </span>`;
+            todayPlanList.appendChild(item);
+        });
+    }
+
+    function setAiBusy(isBusy) {
+        aiBreakdownBtn.disabled = isBusy;
+        aiSummaryBtn.disabled = isBusy;
+        planTodayBtn.disabled = isBusy;
+        aiBreakdownBtn.textContent = isBusy ? t('aiWorking') : t('aiBreakdown');
+    }
+
+    function setAiStatus(message) {
+        aiStatus.textContent = message || '';
+    }
+
+    function extractOutputText(data) {
+        if (typeof data.output_text === 'string' && data.output_text.trim()) {
+            return data.output_text.trim();
+        }
+
+        if (!Array.isArray(data.output)) return '';
+
+        const chunks = [];
+        data.output.forEach(item => {
+            if (!Array.isArray(item.content)) return;
+            item.content.forEach(content => {
+                if (content.type === 'output_text' && typeof content.text === 'string') {
+                    chunks.push(content.text.trim());
+                }
+            });
+        });
+
+        return chunks.join('\n').trim();
+    }
+
+    function extractTasksFromText(text) {
+        return text
+            .split('\n')
+            .map(line => line.trim())
+            .filter(Boolean)
+            .map(line => line.replace(/^[-*\d\s.)]+/, '').trim())
+            .map(line => line.replace(/^(任务|步骤|Task|Step)\s*[:：]\s*/i, '').trim())
+            .filter(line => line.length >= 2 && !line.includes('：') || line.length >= 8)
+            .slice(0, 10);
+    }
+
+    function localBreakdown(goal) {
+        const cleanGoal = goal.replace(/\s+/g, ' ').trim();
+        const subject = cleanGoal.length > 42 ? `${cleanGoal.slice(0, 42)}...` : cleanGoal;
+
+        return [
+            t('localBreakdownStep1', { subject }),
+            t('localBreakdownStep2'),
+            t('localBreakdownStep3'),
+            t('localBreakdownStep4'),
+            t('localBreakdownStep5'),
+            t('localBreakdownStep6')
+        ].join('\n');
+    }
+
+    function localSummary() {
+        const completed = tasks.filter(task => task.completed);
+        const active = tasks.filter(task => !task.completed);
+        const high = active.filter(task => task.priority === 'high');
+        const missingContext = active.filter(task => !task.context && !task.acceptance);
+
+        return [
+            t('localSummaryLine1', { completed: completed.length, active: active.length, health: calculateHealthScore(), healthLabel: healthLabel(calculateHealthScore()) }),
+            '',
+            t('localSummaryTitle'),
+            high[0] ? t('localSummaryStep1', { text: high[0].text }) : t('localSummaryStep1Fallback'),
+            missingContext[0] ? t('localSummaryStep2', { text: missingContext[0].text }) : t('localSummaryStep2Fallback'),
+            t('localSummaryStep3', {
+                tasks: active.slice(0, 3).map(task => task.text).join(currentLang === 'en' ? '; ' : '；') || t('empty')
+            })
+        ].join('\n');
+    }
+
+    function localTodayPlan() {
+        const active = tasks
+            .filter(task => !task.completed)
+            .sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority])
+            .slice(0, 5);
+
+        if (!active.length) return t('emptyTaskPlan');
+
+        return [
+            t('planSummaryTitle'),
+            ...active.map((task, index) => t('planItem', {
+                index: index + 1,
+                text: task.text,
+                effort: task.effort,
+                priority: priorityLabel(task.priority)
+            })),
+            '',
+            t('planFirstStep', { next: getNextAction() })
+        ].join('\n');
+    }
+
+    function escapeMarkdownValue(value) {
+        return String(value)
+            .replace(/\\/g, '\\\\')
+            .replace(/\r?\n/g, '  \n')
+            .replace(/\|/g, '\\|');
+    }
+
+    function buildObsidianMarkdown() {
+        const now = new Date();
+        const date = now.toLocaleDateString(locale());
+        const time = now.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
+        const active = tasks.filter(task => !task.completed);
+        const completed = tasks.filter(task => task.completed);
+
+        const lines = [];
+        lines.push('---');
+        lines.push(`title: "todo-list-app-${currentLang === 'en' ? 'todo-export' : '待办导出'} ${date}"`);
+        lines.push(`exported_at: "${now.toISOString()}"`);
+        lines.push(`total: ${tasks.length}`);
+        lines.push(`active: ${active.length}`);
+        lines.push(`completed: ${completed.length}`);
+        lines.push('---');
+        lines.push('');
+        lines.push(`# ${t('obsidianTitle')} ${date}`);
+        lines.push('');
+        lines.push(`- ${t('obsidianExportTime')}: ${time}`);
+        lines.push(`- ${t('statTotal')}: ${tasks.length}`);
+        lines.push(`- ${t('statActive')}: ${active.length}`);
+        lines.push(`- ${t('statCompleted')}: ${completed.length}`);
+        lines.push('');
+        lines.push(`## ${t('todayPlan')}`);
+        lines.push('```');
+        lines.push(localTodayPlan());
+        lines.push('```');
+        lines.push('');
+        lines.push(`## ${t('obsidianTaskList')}`);
+
+        tasks.forEach((task, index) => {
+            lines.push('');
+            lines.push(`### ${index + 1}. ${escapeMarkdownValue(task.text)}`);
+            lines.push(`- ${t('obsidianStatusLabel')}: ${task.completed ? t('obsidianStatusDone') : t('obsidianStatusActive')}`);
+            lines.push(`- ${t('taskTypeLabel')}: ${escapeMarkdownValue(task.type)}`);
+            lines.push(`- ${t('obsidianProjectLabel')}: ${escapeMarkdownValue(task.project)}`);
+            lines.push(`- ${t('obsidianPriorityLabel')}: ${priorityLabel(task.priority)}`);
+            lines.push(`- ${t('obsidianEffortLabel')}: ${escapeMarkdownValue(task.effort)}`);
+            if (task.context) lines.push(`- ${t('contextLabel')}: ${escapeMarkdownValue(task.context)}`);
+            if (task.acceptance) lines.push(`- ${t('acceptanceLabel')}: ${escapeMarkdownValue(task.acceptance)}`);
+            if (task.nextPrompt) lines.push(`- ${t('promptLabel')}: ${escapeMarkdownValue(task.nextPrompt)}`);
+        });
+
+        return lines.join('\n');
+    }
+
+    function handleExportObsidian() {
+        const content = buildObsidianMarkdown();
+        const fileName = `todo-list-app-${new Date().toISOString().slice(0, 10)}.md`;
+        const blob = new Blob([content], { type: 'text/markdown;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = fileName;
+        anchor.click();
+        URL.revokeObjectURL(url);
+        setAiStatus(t('aiExported', { fileName }));
+    }
+
+    async function callOpenAI(promptText, instructionText) {
+        const apiKey = openaiKeyInput.value.trim();
+        if (!apiKey) return null;
+
+        localStorage.setItem(STORAGE_KEYS.OPENAI_KEY, apiKey);
+
+        const response = await fetch(OPENAI_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: OPENAI_MODEL,
+                input: [
+                    {
+                        role: 'system',
+                        content: [{ type: 'input_text', text: instructionText }]
+                    },
+                    {
+                        role: 'user',
+                        content: [{ type: 'input_text', text: promptText }]
+                    }
+                ]
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(t('aiErrorCallFailed', { status: response.status, error: errorText }));
+        }
+
+        const result = await response.json();
+        const outputText = extractOutputText(result);
+        if (!outputText) throw new Error(t('aiErrorEmpty'));
+        return outputText;
+    }
+
+    async function getSmartText(promptText, instructionText, fallbackText) {
+        const aiText = await callOpenAI(promptText, instructionText);
+        return aiText || fallbackText;
+    }
+
+    async function handleBreakdown() {
+        const goal = goalInput.value.trim() || taskInput.value.trim();
+        if (!goal) {
+            setAiStatus(t('aiNoTaskToBreakdown'));
+            taskInput.focus();
+            return;
+        }
+
+        setAiBusy(true);
+        setAiStatus(openaiKeyInput.value.trim() ? t('aiBreakdownBusy') : t('aiBreakdownLocal'));
+
+        try {
+            const activeTasks = tasks.filter(task => !task.completed).map(task => task.text);
+            const context = activeTasks.length
+                ? t('currentActiveTasks', { tasks: activeTasks.join('；') })
+                : t('noActiveTasks');
+
+            const text = await getSmartText(
+                `目标：${goal}\n${context}`,
+                t('aiBreakdownPrompt'),
+                localBreakdown(goal)
+            );
+
+            aiOutput.textContent = text;
+            aiSuggestedTasks = extractTasksFromText(text);
+            setAiStatus(aiSuggestedTasks.length ? t('aiBreakdownResult', { count: aiSuggestedTasks.length }) : t('aiStatusSaved'));
+        } catch (error) {
+            setAiStatus(error instanceof Error ? error.message : t('aiErrorFallback'));
+        } finally {
+            setAiBusy(false);
+        }
+    }
+
+    async function handleSummary() {
+        setAiBusy(true);
+        setAiStatus(openaiKeyInput.value.trim() ? t('aiSummaryBusy') : t('aiSummaryLocal'));
+
+        try {
+            const completed = tasks.filter(task => task.completed).map(task => `- ${task.text}`).join('\n') || `- ${t('noTasksLabel')}`;
+            const active = tasks
+                .filter(task => !task.completed)
+                .map(task => currentLang === 'en'
+                    ? `- ${task.text} (${task.project}, ${priorityLabel(task.priority)}, ${task.effort})`
+                    : `- ${task.text}（${task.project}，${priorityLabel(task.priority)}，${task.effort}）`)
+                .join('\n') || `- ${t('noTasksLabel')}`;
+
+            const text = await getSmartText(
+                `${t('completedTasksLabel')}:\n${completed}\n\n${t('activeTasksLabel')}:\n${active}\n\n${t('healthLabel')}: ${calculateHealthScore()}`,
+                t('aiSummaryPrompt'),
+                localSummary()
+            );
+
+            aiOutput.textContent = text;
+            aiSuggestedTasks = [];
+            setAiStatus(t('aiSummaryDone'));
+        } catch (error) {
+            setAiStatus(error instanceof Error ? error.message : t('aiErrorFallback'));
+        } finally {
+            setAiBusy(false);
+        }
+    }
+
+    async function handleTodayPlan() {
+        setAiBusy(true);
+        setAiStatus(openaiKeyInput.value.trim() ? t('aiPlanBusy') : t('aiPlanLocal'));
+
+        try {
+            const active = tasks
+                .filter(task => !task.completed)
+                .map(task => currentLang === 'en'
+                    ? `- ${task.text} (${task.project}, ${priorityLabel(task.priority)}, ${task.effort})`
+                    : `- ${task.text}（${task.project}，${priorityLabel(task.priority)}，${task.effort}）`)
+                .join('\n') || `- ${t('noTasksLabel')}`;
+            const text = await getSmartText(
+                `${currentLang === 'en' ? "Generate today's plan from:\n" : '请基于这些任务生成今天的执行计划：\n'}${active}`,
+                t('todayPlanPrompt'),
+                localTodayPlan()
+            );
+
+            aiOutput.textContent = text;
+            aiSuggestedTasks = [];
+            setAiStatus(t('aiPlanDone'));
+        } catch (error) {
+            setAiStatus(error instanceof Error ? error.message : t('aiErrorFallback'));
+        } finally {
+            setAiBusy(false);
+        }
+    }
+
+    function addAiTasksToList() {
+        if (!aiSuggestedTasks.length) {
+            setAiStatus(t('aiNoImport'));
+            return;
+        }
+
+        aiSuggestedTasks.forEach(taskText => {
+            if (!tasks.some(existing => existing.text === taskText)) {
+                const meta = inferMeta(taskText);
+                tasks.push(normalizeTask({
+                    text: taskText,
+                    completed: false,
+                    ...meta,
+                nextPrompt: t('buildAiPromptForTask', { text: taskText })
+                }));
+            }
+        });
+
+        selectedTaskId = tasks[tasks.length - 1]?.id || selectedTaskId;
+        saveTasks();
+        renderTasks(currentFilter);
+        setAiStatus(t('aiImported'));
+    }
+
+    function splitTask(id) {
+        const task = findTask(id);
+        if (!task) return;
+        goalInput.value = task.text;
+        handleBreakdown();
+    }
+
+    addTaskBtn.addEventListener('click', () => addTask());
+    quickFocusBtn.addEventListener('click', () => taskInput.focus());
+
+    taskInput.addEventListener('keydown', event => {
+        if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+            addTask();
         }
     });
 
-    taskList.addEventListener('click', e => {
-        if (e.target.classList.contains('delete-btn')) {
-            const index = parseInt(e.target.dataset.index);
-            deleteTask(index);
+    taskList.addEventListener('change', event => {
+        if (event.target.classList.contains('task-checkbox')) {
+            toggleTask(event.target.dataset.id);
         }
+    });
+
+    taskList.addEventListener('click', event => {
+        const action = event.target.dataset.action;
+        const id = event.target.dataset.id;
+        if (!action || !id) return;
+
+        if (action === 'delete') deleteTask(id);
+        if (action === 'select') {
+            selectedTaskId = id;
+            renderTasks(currentFilter);
+        }
+        if (action === 'split') splitTask(id);
     });
 
     filterBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            // Remove active class from all buttons
-            filterBtns.forEach(b => b.classList.remove('active'));
-            // Add active class to clicked button
-            btn.classList.add('active');
-            // Render tasks with selected filter
-            renderTasks(btn.dataset.filter);
-        });
+        btn.addEventListener('click', () => renderTasks(btn.dataset.filter));
     });
+    if (typeFilterSelect) {
+        typeFilterSelect.addEventListener('change', () => {
+            setActiveTypeFilter(typeFilterSelect.value);
+            renderTasks(currentFilter);
+        });
+    }
 
     clearCompletedBtn.addEventListener('click', clearCompleted);
+    aiBreakdownBtn.addEventListener('click', handleBreakdown);
+    aiSummaryBtn.addEventListener('click', handleSummary);
+    planTodayBtn.addEventListener('click', handleTodayPlan);
+    addAiTasksBtn.addEventListener('click', addAiTasksToList);
+    saveNotesBtn.addEventListener('click', saveSelectedNotes);
+    exportObsidianBtn.addEventListener('click', handleExportObsidian);
+    if (langSelect) {
+        langSelect.addEventListener('change', () => {
+            currentLang = langSelect.value === 'en' ? 'en' : 'zh';
+            localStorage.setItem(STORAGE_KEYS.LANG, currentLang);
+            applyI18n();
+        });
+    }
 
-    // Initial render
-    renderTasks();
+    if (taskTypeSelect) taskTypeSelect.value = taskTypeSelect.value || DEFAULT_TASK_TYPE;
+    setActiveTypeFilter(typeFilterSelect?.value || 'all');
+
+    saveTasks();
+    applyI18n();
 });
