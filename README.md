@@ -46,13 +46,7 @@ python3 -m http.server
 
 ## 截图
 
-### Main
-
-![Main interface](screenshots/main-interface.svg)
-
-### Completed
-
-![Completed tasks](screenshots/completed-tasks.svg)
+<img width="2740" height="2212" alt="image" src="https://github.com/user-attachments/assets/f40edbf8-dc48-4251-bc35-011ae1344828" />
 
 ## 配置说明
 
