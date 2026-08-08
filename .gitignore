@@ -7,3 +7,7 @@
 # local export folders
 obsidian_exports/
 weread_exports/
+
+# dependencies / build output
+node_modules/
+ios/build/
