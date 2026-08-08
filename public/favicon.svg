@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title>AI-native Todo</title>
+  <rect width="64" height="64" rx="12" fill="#0f172a" />
+  <rect x="8" y="8" width="48" height="48" rx="10" fill="#0ea5e9" />
+  <path d="M19 32.5L27 41L45 22" fill="none" stroke="#e2f2ff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

@@ -1,79 +1,78 @@
-# 待办事项应用 (To-Do List App)
+# AI-native Todo
 
-一个简洁、美观且功能完整的待办事项应用，帮助您高效管理日常任务。
+一个支持任务类型、上下文、验收标准、AI 下一步 Prompt、今日计划与 Obsidian 导出的双语待办应用。
 
-## 项目概述
+An AI-native bilingual todo app with task types, context fields, acceptance criteria, next-step prompts, today plan, and Obsidian export.
 
-这个应用程序允许用户创建、管理和跟踪他们的待办事项。它具有直观的用户界面，支持任务的添加、完成、删除和过滤，并且会将任务数据保存在浏览器的本地存储中，确保刷新页面后数据不会丢失。
+## 需求核对（按你的要求）
 
-## 功能特点
+- [x] 任务支持类型（Personal / Code / Product / Learning / Life）
+- [x] 任务支持上下文字段（Context）
+- [x] 任务支持验收标准（Acceptance Criteria）
+- [x] 任务支持下一步 prompt（Next AI Prompt）
+- [x] 一键导出 Obsidian Markdown（`todo-list-app-YYYY-MM-DD.md`）
+- [x] 今日计划视图（Today Top 5 / 今日计划面板）
 
-- ✅ **添加新任务** - 输入任务内容并添加到列表中
-- ✅ **标记任务状态** - 点击复选框将任务标记为完成或未完成
-- ✅ **删除任务** - 移除不再需要的任务
-- ✅ **过滤任务** - 按全部、活动或已完成状态筛选任务
-- ✅ **清除已完成任务** - 一键删除所有已完成的任务
-- ✅ **任务数量统计** - 显示剩余未完成的任务数量
-- ✅ **本地存储** - 自动保存任务数据到浏览器本地存储
-- ✅ **响应式设计** - 适配不同屏幕尺寸的设备
+## Repository
 
-## 技术栈
+当前仓库名已统一为：`todo-list-app`
 
-- **前端框架**：纯HTML、CSS和JavaScript
-- **样式**：自定义CSS（无框架）
-- **数据存储**：浏览器本地存储 (localStorage)
-- **开发工具**：任何文本编辑器
+## 核心功能
 
-## 如何使用
+- 支持中文 / English 两种界面（左侧语言切换）
+- 任务类型、优先级、预估时长（类型会用于过滤和看板统计）
+- 支持 AI 辅助：智能拆解、复盘、今日计划（无 API Key 自动本地降级）
+- 健康分 + 下一步建议
+- 一键导出 Obsidian Markdown
 
-1. **克隆或下载项目**
-   ```bash
-   git clone <仓库URL>  # 如果有仓库的话
-   # 或者直接下载项目文件
-   ```
+## 文件结构
 
-2. **启动应用**
-   - 最简单的方法是使用Python的内置HTTP服务器：
-     ```bash
-     cd /Users/lizhi/code/todolist_app
-     python3 -m http.server
-     ```
-   - 或者直接在浏览器中打开`index.html`文件（某些功能可能受限）
-
-3. **访问应用**
-   - 在浏览器中访问 `http://localhost:8000`
-   - 开始添加和管理您的任务！
-
-## 项目结构
-
-```
-/Users/lizhi/code/todolist_app/
-├── index.html  # 应用的HTML结构
-├── styles.css  # 应用的样式表
-├── app.js      # 应用的JavaScript逻辑
-└── README.md   # 项目说明文档
+```text
+/
+├── index.html       # UI + i18n 标记
+├── styles.css       # 页面样式
+├── app.js           # 任务管理 / AI 流程 / 多语言逻辑
+└── README.md        # 项目说明
 ```
 
-## 未来改进方向
+## 快速开始
 
-- 添加任务优先级标记
-- 实现任务分类或标签功能
-- 添加任务截止日期和提醒功能
-- 实现数据同步到云端
-- 添加用户认证系统
+```bash
+# 在项目根目录
+python3 -m http.server
+```
+
+打开：`http://localhost:8000`
+
+## 在线部署
+
+- Production: https://todo-list-app.zhili1993.chatgpt.site
+- GitHub 仓库： https://github.com/zhililab/todo-list-app
+
+## iOS 版本（进行中）
+
+- 已新增 iOS 迁移骨架：`/ios/README.md`
+- 架构与订阅实现建议：`/ios/Design/ios-architecture-plan.md`
+- 多任务并行执行清单：`/ios/Runbook/parallel-handoff.md`
+- IAP 与发布清单：`/ios/Runbook/iap-and-release-checklist.md`
 
 ## 截图
 
-以下是应用的一些效果图：
+<img width="2740" height="2212" alt="image" src="https://github.com/user-attachments/assets/f40edbf8-dc48-4251-bc35-011ae1344828" />
 
-### 主界面
-![主界面](screenshots/main-interface.svg)
+## 更新日志
 
-### 已完成任务视图
-![已完成任务视图](screenshots/completed-tasks.svg)
+- 2026-08-08：已补充网站 favicon 配置（Tab icon）并上线到 https://todo-list-app.zhili1993.chatgpt.site。
+- 2026-08-08：新增 `site.webmanifest`，增强移动端/站点安装体验，图标统一使用高识别度专业 favicon。
 
-## 贡献
+## 配置说明
 
-欢迎提交问题和拉取请求，帮助改进这个应用！
+- 本地语言偏好与 API Key 会持久化到 `localStorage`
+- `.env` 不需要配置（纯前端，API Key 在浏览器输入框中保存到本地）
 
-© 2023 待办事项应用
+## 运行说明（English）
+
+1. Start service: `python3 -m http.server`
+2. Open `http://localhost:8000`
+3. Add tasks, set task type/priority, fill context + acceptance criteria, run AI features if needed
+4. Export to Obsidian Markdown for daily planning/archive
