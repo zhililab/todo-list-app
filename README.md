@@ -58,7 +58,7 @@ python3 -m http.server
 
 ## 截图
 
-<img width="2740" height="2212" alt="image" src="https://github.com/user-attachments/assets/f40edbf8-dc48-4251-bc35-011ae1344828" />
+<img width="2740" height="3088" alt="image" src="https://github.com/user-attachments/assets/932a221e-968f-4fd5-8f56-51b4cc2b71f5" />
 
 ## 更新日志
 
