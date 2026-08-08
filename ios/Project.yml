@@ -1,0 +1,47 @@
+name: TodoNative
+options:
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    SWIFT_STRICT_CONCURRENCY: "complete"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    PRODUCT_BUNDLE_IDENTIFIER: com.zhili.todo-native
+    DEVELOPMENT_TEAM: 3VTA6Z7UCM
+
+targets:
+  TodoNative:
+    platform: iOS
+    type: application
+    deploymentTarget: "17.0"
+    sources:
+      - path: TodoNative
+    resources:
+      - path: TodoNative/Assets.xcassets
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: "AI Native Todo"
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: true
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIUserInterfaceStyle: Light
+    scheme:
+      testTargets:
+        - TodoNativeTests
+
+  TodoNativeTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: TodoNativeTests
+    dependencies:
+      - target: TodoNative
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.zhili.todo-native.tests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/TodoNative.app/TodoNative"
+        BUNDLE_LOADER: "$(TEST_HOST)"
