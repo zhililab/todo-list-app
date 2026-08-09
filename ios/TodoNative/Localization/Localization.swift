@@ -12,7 +12,7 @@ enum Localization {
             "tab.companion": "伙伴",
 
             // Dashboard
-            "dashboard.title": "今日面板",
+            "dashboard.title": "今日",
             "dashboard.subtitle": "AI-native Todo",
             "dashboard.premiumOn": "高级已开启",
             "dashboard.freeMode": "免费模式",
@@ -34,6 +34,7 @@ enum Localization {
             "dashboard.statCompleted": "已完成",
             "dashboard.statHealth": "健康分",
             "dashboard.aiShort": "AI",
+            "dashboard.aiOptimize": "AI 优化",
 
             // Tasks
             "tasks.title": "任务",
@@ -135,6 +136,7 @@ enum Localization {
 
             // Common
             "common.cancel": "取消",
+            "common.ok": "好",
             "common.save": "保存",
             "common.done": "完成",
 
@@ -187,6 +189,11 @@ enum Localization {
             "ai.provider": "AI 服务商",
             "ai.baseUrl": "Base URL（OpenAI 兼容）",
             "ai.model": "模型",
+            "ai.model.custom": "自定义模型",
+            "ai.managedFixedModel": "未配置 API Key，托管额度固定使用 DeepSeek V4 Flash。",
+            "ai.modelSelectorHint": "从当前服务商的常用模型中选择，也可使用自定义模型。",
+            "ai.customModelPlaceholder": "输入自定义模型 ID",
+            "ai.customBaseURLHint": "自定义服务商需填写 OpenAI 兼容的 Base URL。",
             "ai.key": "API Key",
             "ai.keyNoConfig": "未配置 Key，AI 功能将使用本地规划器。",
             "ai.keyConfigured": "已配置 Key，AI 功能将调用所选服务商。",
@@ -244,6 +251,13 @@ enum Localization {
             "noticeEnable": "允许提醒",
             "noticeEnabled": "提醒已开启",
             "noticeDenied": "通知被拒绝，点此重新开启",
+            "notice.systemStatus": "系统权限",
+            "notice.systemAllowed": "已允许",
+            "notice.systemDenied": "未允许通知",
+            "notice.systemNotDetermined": "尚未请求",
+            "notice.openSettings": "打开系统设置",
+            "notice.permissionExplanation": "开启后，只有设置了到期时间的未完成任务会发送提醒。关闭会移除待发任务提醒。",
+            "notice.debugPendingCount": "%d 条任务提醒待发送（调试）",
 
             // Quota（AI 托管额度）
             "quota.exceeded.free": "免费额度已用完：订阅 Pro 或填自己的 API Key",
@@ -259,6 +273,20 @@ enum Localization {
             "voice.micPermissionDenied": "麦克风/语音权限被拒绝，请在系统设置中开启",
             "voice.sessionFailed": "录音会话失败：%@",
             "voice.engineFailed": "录音引擎失败：%@",
+            "voice.errorTitle": "语音输入不可用",
+            "voice.switchToVoice": "切换到语音输入",
+            "voice.switchToKeyboard": "切换到键盘输入",
+            "voice.cancelAndSwitchToKeyboard": "取消语音并切换到键盘",
+            "voice.startRecording": "点击开始说话",
+            "voice.requestingPermission": "正在请求语音权限…",
+            "voice.recording": "正在聆听，点击结束",
+            "voice.finalizing": "正在整理语音…",
+            "voice.openSettings": "打开系统设置",
+            "voice.speechPermissionDenied": "语音识别权限被拒绝，请在系统设置中开启。",
+            "voice.microphonePermissionDenied": "麦克风权限被拒绝，请在系统设置中开启。",
+            "voice.recognitionFailed": "语音识别失败，请重试。",
+            "voice.noSpeechDetected": "没有听清内容，请再试一次。",
+            "voice.transcriptReady": "语音已加入输入框，确认后再发送。",
         ],
         "en": [
             "tab.today": "Today Plan",
@@ -266,7 +294,7 @@ enum Localization {
             "tab.settings": "Settings",
             "tab.companion": "Companion",
 
-            "dashboard.title": "Today Panel",
+            "dashboard.title": "Today",
             "dashboard.subtitle": "AI-native Todo",
             "dashboard.premiumOn": "Premium active",
             "dashboard.freeMode": "Free mode",
@@ -288,6 +316,7 @@ enum Localization {
             "dashboard.statCompleted": "Done",
             "dashboard.statHealth": "Health Score",
             "dashboard.aiShort": "AI",
+            "dashboard.aiOptimize": "Optimize with AI",
 
             "tasks.title": "Tasks",
             "tasks.inboxTag": "Natural language inbox",
@@ -384,6 +413,7 @@ enum Localization {
             "settings.unlockPremium": "Unlock Premium",
 
             "common.cancel": "Cancel",
+            "common.ok": "OK",
             "common.save": "Save",
             "common.done": "Done",
 
@@ -431,6 +461,11 @@ enum Localization {
             "ai.provider": "AI Provider",
             "ai.baseUrl": "Base URL (OpenAI compatible)",
             "ai.model": "Model",
+            "ai.model.custom": "Custom model",
+            "ai.managedFixedModel": "Without an API key, managed quota uses the fixed DeepSeek V4 Flash model.",
+            "ai.modelSelectorHint": "Choose a common model for this provider, or enter a custom model.",
+            "ai.customModelPlaceholder": "Enter custom model ID",
+            "ai.customBaseURLHint": "A custom provider requires an OpenAI-compatible Base URL.",
             "ai.key": "API Key",
             "ai.keyNoConfig": "No key configured. AI features will use the local planner.",
             "ai.keyConfigured": "Key configured. AI features will call the selected provider.",
@@ -482,6 +517,13 @@ enum Localization {
             "noticeEnable": "Enable reminders",
             "noticeEnabled": "Reminders enabled",
             "noticeDenied": "Notifications are blocked — tap to re-enable",
+            "notice.systemStatus": "System permission",
+            "notice.systemAllowed": "Allowed",
+            "notice.systemDenied": "Notifications not allowed",
+            "notice.systemNotDetermined": "Not requested yet",
+            "notice.openSettings": "Open Settings",
+            "notice.permissionExplanation": "When enabled, only incomplete tasks with due dates send reminders. Turning it off removes pending task reminders.",
+            "notice.debugPendingCount": "%d pending task reminders (Debug)",
 
             // Quota (managed AI quota)
             "quota.exceeded.free": "Free quota used up: subscribe to Pro or add your own API key",
@@ -497,6 +539,20 @@ enum Localization {
             "voice.micPermissionDenied": "Microphone/speech permission denied — enable it in Settings",
             "voice.sessionFailed": "Recording session failed: %@",
             "voice.engineFailed": "Recording engine failed: %@",
+            "voice.errorTitle": "Voice input unavailable",
+            "voice.switchToVoice": "Switch to voice input",
+            "voice.switchToKeyboard": "Switch to keyboard input",
+            "voice.cancelAndSwitchToKeyboard": "Cancel voice input and switch to keyboard",
+            "voice.startRecording": "Tap to start speaking",
+            "voice.requestingPermission": "Requesting voice permission…",
+            "voice.recording": "Listening — tap to finish",
+            "voice.finalizing": "Finishing transcription…",
+            "voice.openSettings": "Open Settings",
+            "voice.speechPermissionDenied": "Speech recognition permission was denied. Enable it in Settings.",
+            "voice.microphonePermissionDenied": "Microphone permission was denied. Enable it in Settings.",
+            "voice.recognitionFailed": "Speech recognition failed. Please try again.",
+            "voice.noSpeechDetected": "No speech was detected. Please try again.",
+            "voice.transcriptReady": "Voice text is in the composer. Review it before sending.",
         ],
     ]
 

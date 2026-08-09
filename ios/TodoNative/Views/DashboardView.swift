@@ -1,197 +1,302 @@
 import SwiftUI
 
+enum DashboardAccessStatus: Equatable {
+    case premium
+    case trial(remainingDays: Int)
+    case free
+
+    static func resolve(hasPremium: Bool, trialState: TrialState) -> DashboardAccessStatus {
+        if hasPremium {
+            return .premium
+        }
+
+        switch trialState {
+        case .premium:
+            return .premium
+        case let .trial(remainingDays):
+            return .trial(remainingDays: remainingDays)
+        case .free:
+            return .free
+        }
+    }
+}
+
+enum DashboardSheet: String, Identifiable {
+    case aiPlan
+    case paywall
+
+    var id: String { rawValue }
+
+    static func aiRoute(canUseAIPlan: Bool) -> DashboardSheet {
+        canUseAIPlan ? .aiPlan : .paywall
+    }
+
+    static func membershipRoute(accessStatus: DashboardAccessStatus) -> DashboardSheet? {
+        accessStatus == .premium ? nil : .paywall
+    }
+}
+
 struct DashboardView: View {
     @EnvironmentObject private var vm: TodoViewModel
     @EnvironmentObject private var purchaseManager: PurchaseManager
     @EnvironmentObject private var trialManager: TrialManager
     @EnvironmentObject private var lang: LanguageEnvironment
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var showAI = false
-
-    private var isWideLayout: Bool {
-        horizontalSizeClass == .regular
-    }
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var activeSheet: DashboardSheet?
 
     private var listAnimation: Animation? {
-        reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.8)
+        AppTheme.Motion.resolvedFade(AppTheme.Motion.content, reduceMotion: reduceMotion)
+    }
+
+    private var planTransition: AnyTransition {
+        if reduceMotion {
+            return .opacity
+        }
+        return .asymmetric(
+            insertion: .opacity.combined(with: .offset(y: 8)),
+            removal: .opacity
+        )
+    }
+
+    private var accessStatus: DashboardAccessStatus {
+        DashboardAccessStatus.resolve(
+            hasPremium: purchaseManager.hasPremium,
+            trialState: trialManager.trialState
+        )
+    }
+
+    private var membershipText: String {
+        switch accessStatus {
+        case .premium:
+            return Localization.t("dashboard.premiumOn")
+        case let .trial(remainingDays):
+            return Localization.t("dashboard.trialLeft", remainingDays)
+        case .free:
+            return Localization.t("dashboard.freeMode")
+        }
+    }
+
+    private var membershipColor: Color {
+        switch accessStatus {
+        case .premium:
+            return .success
+        case .trial:
+            return .warning
+        case .free:
+            return .appMuted
+        }
     }
 
     var body: some View {
         let _ = lang.language
         NavigationStack {
             ScrollView {
-                VStack(spacing: AppTheme.Spacing.md) {
-                    if isWideLayout {
-                        HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
-                            headerSection
-                                .frame(maxWidth: .infinity)
-                            statsSection
-                                .frame(maxWidth: .infinity)
-                        }
-                    } else {
-                        headerSection
-                        statsSection
-                    }
-
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Text(Localization.t("dashboard.todayPlan"))
-                                .font(AppTheme.Typography.headline)
-                            Spacer()
-                            Button(Localization.t("dashboard.regenerate")) {
-                                vm.generatePlan()
-                            }
-                            .ghostButton()
-                            .accessibilityLabel(Localization.t("dashboard.regenerateA11y"))
-
-                            Button(Localization.t("ai.todayPlan")) { showAI = true }
-                                .ghostButton()
-                        }
-
-                        if vm.todayPlan.isEmpty {
-                            Text(Localization.t("dashboard.emptyPlan"))
-                                .font(AppTheme.Typography.body)
-                                .foregroundStyle(Color.appMuted)
-                                .padding(.vertical, AppTheme.Spacing.lg)
-                                .frame(maxWidth: .infinity, alignment: .center)
-                                .accessibilityLabel(Localization.t("dashboard.emptyA11y"))
-                        } else {
-                            ForEach(vm.todayPlan, id: \.id) { item in
-                                TodoCardView(item: item) { status in
-                                    withAnimation(listAnimation) { vm.updateStatus(item, status: status) }
-                                } onArchive: {
-                                    withAnimation(listAnimation) { vm.archive(item) }
-                                }
-                                .transition(.asymmetric(
-                                    insertion: .opacity.combined(with: .move(edge: .bottom)),
-                                    removal: .opacity.combined(with: .scale(scale: 0.85))
-                                ))
-                            }
-                        }
-                    }
-                    .appCard()
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                    executionSummary
+                    todayPlan
                 }
                 .padding(AppTheme.Spacing.md)
             }
             .navigationTitle(Localization.t("dashboard.title"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(Localization.t("dashboard.aiShort")) { showAI = true }
+                    Button(Localization.t("dashboard.aiShort")) {
+                        presentAIPlan()
+                    }
                 }
             }
-            .sheet(isPresented: $showAI) {
-                AIWorkbenchView()
+            .sheet(item: $activeSheet) { sheet in
+                switch sheet {
+                case .aiPlan:
+                    AIWorkbenchView()
+                case .paywall:
+                    PaywallView()
+                }
             }
         }
         .appBg()
     }
 
-    @ViewBuilder
-    private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(Localization.t("dashboard.title"))
-                .font(AppTheme.Typography.title)
-            Text(Localization.t("dashboard.subtitle"))
-                .font(AppTheme.Typography.caption)
-                .foregroundStyle(Color.appMuted)
+    private var executionSummary: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                    completionHeading
+                    membershipButton
+                }
+            } else {
+                HStack(alignment: .firstTextBaseline) {
+                    completionHeading
+                    Spacer()
+                    membershipButton
+                }
+            }
 
-            Label(
-                purchaseManager.hasPremium ? Localization.t("dashboard.premiumOn") : Localization.t("dashboard.freeMode"),
-                systemImage: purchaseManager.hasPremium ? "crown.fill" : "clock.fill"
-            )
-            .font(AppTheme.Typography.caption)
-            .foregroundStyle(purchaseManager.hasPremium ? Color.success : Color.warning)
+            ProgressView(value: Double(vm.completionRate), total: 100)
+                .tint(Color.accentBlue)
+                .animation(AppTheme.Motion.resolved(AppTheme.Motion.progress, reduceMotion: reduceMotion), value: vm.completionRate)
+                .accessibilityLabel(Localization.t("dashboard.execution"))
+                .accessibilityValue(Localization.t("dashboard.progress", vm.completionRate, vm.healthScore))
 
-            Text(purchaseManager.hasPremium ? Localization.t("dashboard.subscribed") : Localization.t("dashboard.trialLeft", trialManager.remainingDays))
-                .font(AppTheme.Typography.caption)
-                .foregroundStyle(Color.appMuted)
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                    summaryMetrics
+                }
+            } else {
+                HStack(spacing: AppTheme.Spacing.lg) {
+                    summaryMetrics
+                    Spacer(minLength: 0)
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .appCard()
     }
 
-    // web .progress-wrap + .stats-grid
-    @ViewBuilder
-    private var statsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
+    private var completionHeading: some View {
+        HStack(alignment: .firstTextBaseline, spacing: AppTheme.Spacing.xs) {
+                Text("\(vm.completionRate)%")
+                    .font(.system(.title, design: .rounded, weight: .bold))
+                    .foregroundStyle(Color.appText)
+                    .contentTransition(reduceMotion ? .identity : .numericText(countsDown: false))
+                    .animation(AppTheme.Motion.resolved(AppTheme.Motion.stateChange, reduceMotion: reduceMotion), value: vm.completionRate)
                 Text(Localization.t("dashboard.execution"))
-                    .font(AppTheme.Typography.headline)
-                Spacer()
-                Text(Localization.t("dashboard.progress", vm.completionRate, vm.healthScore))
                     .font(AppTheme.Typography.caption)
                     .foregroundStyle(Color.appMuted)
-            }
+        }
+    }
 
-            // web .progress-track / #progress-fill（蓝色渐变）
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color(hex: 0xF0E6DE))
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color(hex: 0x58A3FF), Color(hex: 0x3F75FF)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: max(0, min(1, CGFloat(vm.completionRate) / 100)) * geo.size.width)
-                        .animation(reduceMotion ? nil : .spring(response: 0.4, dampingFraction: 0.75), value: vm.completionRate)
+    @ViewBuilder
+    private var membershipButton: some View {
+        if accessStatus == .premium {
+            membershipLabel
+                .frame(minHeight: 44)
+                .accessibilityLabel(membershipText)
+        } else {
+            Button {
+                activeSheet = DashboardSheet.membershipRoute(accessStatus: accessStatus)
+            } label: {
+                membershipLabel
+            }
+            .buttonStyle(.plain)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+            .accessibilityLabel(membershipText)
+        }
+    }
+
+    private var membershipLabel: some View {
+        Label(membershipText, systemImage: accessStatus == .premium ? "crown.fill" : "clock.fill")
+            .font(AppTheme.Typography.caption)
+            .foregroundStyle(membershipColor)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(membershipColor.opacity(0.12), in: Capsule())
+    }
+
+    @ViewBuilder
+    private var summaryMetrics: some View {
+        Group {
+            SummaryMetric(
+                    label: Localization.t("dashboard.statActive"),
+                    value: vm.todoItems.count + vm.doingItems.count,
+                    color: .accentBlue,
+                    reduceMotion: reduceMotion
+                )
+            SummaryMetric(
+                    label: Localization.t("dashboard.statCompleted"),
+                    value: vm.completedItems.count,
+                    color: .success,
+                    reduceMotion: reduceMotion
+                )
+            SummaryMetric(
+                    label: Localization.t("dashboard.statHealth"),
+                    value: vm.healthScore,
+                    color: .warning,
+                    reduceMotion: reduceMotion
+                )
+        }
+    }
+
+    private var todayPlan: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            HStack {
+                Text(Localization.t("dashboard.todayPlan"))
+                    .font(AppTheme.Typography.headline)
+                Spacer()
+                if !vm.todayPlan.isEmpty {
+                    Menu {
+                        Button(Localization.t("dashboard.regenerate")) {
+                            vm.generatePlan()
+                        }
+                        Button(Localization.t("dashboard.aiOptimize")) {
+                            presentAIPlan()
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.title3)
+                            .frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel(Localization.t("dashboard.todayPlan"))
                 }
             }
-            .frame(height: 8)
 
-            // web .stats-grid（4 个 stat-card）
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: isWideLayout ? 4 : 2), spacing: 8) {
-                StatCard(label: Localization.t("dashboard.statTotal"), value: "\(vm.unarchivedItems.count)", color: .appText)
-                StatCard(label: Localization.t("dashboard.statActive"), value: "\(vm.todoItems.count + vm.doingItems.count)", color: .accentBlue)
-                StatCard(label: Localization.t("dashboard.statCompleted"), value: "\(vm.completedItems.count)", color: .success)
-                StatCard(label: Localization.t("dashboard.statHealth"), value: "\(vm.healthScore)", color: .warning)
+            if vm.todayPlan.isEmpty {
+                VStack(spacing: AppTheme.Spacing.sm) {
+                    Text(Localization.t("dashboard.emptyPlan"))
+                        .font(AppTheme.Typography.body)
+                        .foregroundStyle(Color.appMuted)
+                        .multilineTextAlignment(.center)
+                        .accessibilityLabel(Localization.t("dashboard.emptyA11y"))
+                    Button(Localization.t("dashboard.aiGenerate")) {
+                        presentAIPlan()
+                    }
+                    .primaryActionButton()
+                    .accessibilityLabel(Localization.t("dashboard.aiGenerateA11y"))
+                }
+                .padding(.vertical, AppTheme.Spacing.sm)
+                .frame(maxWidth: .infinity)
+            } else {
+                ForEach(vm.todayPlan, id: \.id) { item in
+                    TodoCardView(item: item) { status in
+                        withAnimation(listAnimation) {
+                            vm.updateStatus(item, status: status)
+                        }
+                    } onArchive: {
+                        withAnimation(listAnimation) {
+                            vm.archive(item)
+                        }
+                    }
+                    .transition(planTransition)
+                }
             }
-
-            Text(vm.healthLabel())
-                .font(AppTheme.Typography.caption)
-                .foregroundStyle(Color.appMuted)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .appCard()
+    }
+
+    private func presentAIPlan() {
+        activeSheet = DashboardSheet.aiRoute(canUseAIPlan: purchaseManager.canUse(.aiPlan))
     }
 }
 
-private struct StatCard: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
+private struct SummaryMetric: View {
     let label: String
-    let value: String
+    let value: Int
     let color: Color
-
-    @State private var popScale: CGFloat = 1
+    let reduceMotion: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(label)
                 .font(AppTheme.Typography.caption2)
                 .foregroundStyle(Color.appMuted)
-            Text(value)
-                .font(.system(size: 24, weight: .bold, design: .rounded))
+            Text("\(value)")
+                .font(.system(.headline, design: .rounded, weight: .bold))
                 .foregroundStyle(color)
-                .contentTransition(.numericText(countsDown: false))
-                .scaleEffect(popScale)
-                .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.7), value: value)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(Color.white)
-        .overlay(
-            RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusMd)
-                .stroke(Color(hex: 0xEFE4DC), lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusMd))
-        .onChange(of: value) { _, _ in
-            guard !reduceMotion else { return }
-            withAnimation(.spring(response: 0.15, dampingFraction: 0.5)) { popScale = 1.08 }
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.7).delay(0.09)) { popScale = 1 }
+                .contentTransition(reduceMotion ? .identity : .numericText(countsDown: false))
+                .animation(AppTheme.Motion.resolved(AppTheme.Motion.stateChange, reduceMotion: reduceMotion), value: value)
         }
     }
 }

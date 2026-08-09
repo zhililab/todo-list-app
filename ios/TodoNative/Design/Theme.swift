@@ -2,6 +2,22 @@ import SwiftUI
 import UIKit
 
 enum AppTheme {
+    enum Motion {
+        static let press = Animation.easeOut(duration: 0.12)
+        static let stateChange = Animation.easeInOut(duration: 0.18)
+        static let content = Animation.easeOut(duration: 0.24)
+        static let progress = Animation.easeOut(duration: 0.32)
+        static let settle = Animation.spring(response: 0.32, dampingFraction: 0.86)
+
+        static func resolved(_ animation: Animation, reduceMotion: Bool) -> Animation? {
+            reduceMotion ? nil : animation
+        }
+
+        static func resolvedFade(_ animation: Animation, reduceMotion: Bool) -> Animation {
+            reduceMotion ? .easeOut(duration: 0.12) : animation
+        }
+    }
+
     enum Spacing {
         static let xs: CGFloat = 6
         static let sm: CGFloat = 10
@@ -15,11 +31,11 @@ enum AppTheme {
     }
 
     enum Typography {
-        static let title = Font.system(size: 34, weight: .semibold, design: .rounded)
-        static let headline = Font.system(size: 20, weight: .semibold, design: .rounded)
-        static let body = Font.system(size: 16, weight: .regular, design: .rounded)
-        static let caption = Font.system(size: 13, weight: .medium, design: .rounded)
-        static let caption2 = Font.system(size: 12, weight: .regular, design: .rounded)
+        static let title = Font.system(.largeTitle, design: .rounded, weight: .semibold)
+        static let headline = Font.system(.title3, design: .rounded, weight: .semibold)
+        static let body = Font.system(.body, design: .rounded)
+        static let caption = Font.system(.caption, design: .rounded, weight: .medium)
+        static let caption2 = Font.system(.caption2, design: .rounded)
     }
 }
 
@@ -80,9 +96,6 @@ struct AppBgModifier: ViewModifier {
 
 // web .panel：白底 + 1px 边框 + 柔和阴影 + 18px 圆角
 struct AppCardStyle: ViewModifier {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var appeared = false
-
     func body(content: Content) -> some View {
         content
             .padding(AppTheme.Spacing.md)
@@ -95,14 +108,6 @@ struct AppCardStyle: ViewModifier {
             )
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusLg))
             .shadow(color: Color(red: 68/255, green: 77/255, blue: 68/255).opacity(0.11), radius: 16, x: 0, y: 8)
-            .opacity(appeared ? 1 : 0)
-            .onAppear {
-                if reduceMotion {
-                    appeared = true
-                } else {
-                    withAnimation(.easeOut(duration: 0.25)) { appeared = true }
-                }
-            }
     }
 }
 
@@ -119,9 +124,9 @@ struct PrimaryActionButton: ButtonStyle {
             .background(Color.brand.opacity(configuration.isPressed ? 0.85 : 1))
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusSm))
             .shadow(color: Color.brand.opacity(0.3), radius: 8, y: 4)
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .scaleEffect(reduceMotion || !configuration.isPressed ? 1 : 0.98)
             .opacity(configuration.isPressed ? 0.9 : 1)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
+            .animation(AppTheme.Motion.resolved(AppTheme.Motion.press, reduceMotion: reduceMotion), value: configuration.isPressed)
     }
 }
 
@@ -141,9 +146,9 @@ struct GhostButton: ButtonStyle {
                     .stroke(Color.appLine, lineWidth: 1)
             )
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusSm))
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .scaleEffect(reduceMotion || !configuration.isPressed ? 1 : 0.98)
             .opacity(configuration.isPressed ? 0.9 : 1)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
+            .animation(AppTheme.Motion.resolved(AppTheme.Motion.press, reduceMotion: reduceMotion), value: configuration.isPressed)
     }
 }
 

@@ -1,13 +1,9 @@
 import SwiftUI
 
 struct MainTabView: View {
-    @EnvironmentObject private var vm: TodoViewModel
-    @EnvironmentObject private var purchaseManager: PurchaseManager
-    @EnvironmentObject private var trialManager: TrialManager
     @EnvironmentObject private var lang: LanguageEnvironment
 
     @State private var selectedTab = 0
-    @State private var showingPaywall = false
 
     var body: some View {
         let _ = lang.language
@@ -27,14 +23,6 @@ struct MainTabView: View {
             SettingsView()
                 .tabItem { Label(Localization.t("tab.settings"), systemImage: "gearshape") }
                 .tag(3)
-        }
-        .onAppear {
-            if trialManager.remainingDays == 0 && !purchaseManager.hasPremium {
-                showingPaywall = true
-            }
-        }
-        .sheet(isPresented: $showingPaywall) {
-            PaywallView()
         }
     }
 }

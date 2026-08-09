@@ -4,7 +4,6 @@ struct TodoCardView: View {
     @EnvironmentObject private var lang: LanguageEnvironment
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @State private var popScale: CGFloat = 1
     @State private var flashOpacity: Double = 0
 
     let item: TodoItem
@@ -90,7 +89,6 @@ struct TodoCardView: View {
                 Image(systemName: item.isCompleted ? "checkmark.square.fill" : "square")
                     .font(.system(size: 22))
                     .foregroundStyle(item.isCompleted ? Color.accentBlue : Color.appLine)
-                    .scaleEffect(popScale)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(item.isCompleted ? Localization.t("card.unmarkDone") : Localization.t("card.markDone"))
@@ -227,10 +225,9 @@ struct TodoCardView: View {
         .onChange(of: item.isCompleted) { _, completed in
             guard completed else { return }
             flashOpacity = 0.35
-            withAnimation(.easeOut(duration: 0.5)) { flashOpacity = 0 }
-            guard !reduceMotion else { return }
-            withAnimation(.spring(response: 0.18, dampingFraction: 0.5)) { popScale = 1.08 }
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.7).delay(0.1)) { popScale = 1 }
+            withAnimation(AppTheme.Motion.resolvedFade(AppTheme.Motion.stateChange, reduceMotion: reduceMotion)) {
+                flashOpacity = 0
+            }
         }
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusLg)

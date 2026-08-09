@@ -7,7 +7,6 @@ final class CompanionViewModel: ObservableObject {
     @Published var input = ""
     @Published var isBusy = false
     @Published var isTyping = false
-    @Published var reduceMotion = false
 
     struct BuddyMessage: Identifiable, Codable {
         let id: UUID
@@ -118,15 +117,9 @@ final class CompanionViewModel: ObservableObject {
         return error.localizedDescription
     }
 
-    // iMessage 风格插入动画；尊重系统“减弱动态效果”
+    // Visual transitions belong to the view so they can follow environment accessibility settings.
     private func appendAnimated(_ message: BuddyMessage) {
-        if reduceMotion {
-            messages.append(message)
-        } else {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                messages.append(message)
-            }
-        }
+        messages.append(message)
     }
 
     func greetingIfNeeded(language: String) {

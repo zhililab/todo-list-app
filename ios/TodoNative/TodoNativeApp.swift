@@ -3,6 +3,7 @@ import SwiftData
 
 @main
 struct TodoNativeApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     private let container: ModelContainer
 
     @StateObject private var trialManager: TrialManager
@@ -10,6 +11,7 @@ struct TodoNativeApp: App {
     @StateObject private var planViewModel: TodoViewModel
     @StateObject private var aiViewModel: AIViewModel
     @StateObject private var languageEnvironment: LanguageEnvironment
+    @StateObject private var notificationService: NotificationService
 
     init() {
         do {
@@ -23,7 +25,8 @@ struct TodoNativeApp: App {
 
         let trial = TrialManager()
         let purchase = PurchaseManager(trialManager: trial)
-        let vm = TodoViewModel(modelContainer: container)
+        let notifications = NotificationService()
+        let vm = TodoViewModel(modelContainer: container, reminderScheduler: notifications)
         let ai = AIViewModel()
         let lang = LanguageEnvironment()
 
@@ -32,6 +35,7 @@ struct TodoNativeApp: App {
         _planViewModel = StateObject(wrappedValue: vm)
         _aiViewModel = StateObject(wrappedValue: ai)
         _languageEnvironment = StateObject(wrappedValue: lang)
+        _notificationService = StateObject(wrappedValue: notifications)
     }
 
     var body: some Scene {
@@ -42,11 +46,24 @@ struct TodoNativeApp: App {
                 .environmentObject(planViewModel)
                 .environmentObject(aiViewModel)
                 .environmentObject(languageEnvironment)
+                .environmentObject(notificationService)
                 .onAppear {
                     NotificationService.setup()
-                    NotificationService.requestAuthorization()
                     Task {
+                        await notificationService.refresh()
+                        if notificationService.isRemindersEnabled {
+                            planViewModel.restoreDueReminders()
+                        }
                         await purchaseManager.initialize()
+                    }
+                }
+                .onChange(of: scenePhase) {
+                    guard scenePhase == .active else { return }
+                    Task {
+                        await notificationService.refresh()
+                        if notificationService.isRemindersEnabled {
+                            planViewModel.restoreDueReminders()
+                        }
                     }
                 }
         }

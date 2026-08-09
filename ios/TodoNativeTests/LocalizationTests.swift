@@ -41,4 +41,42 @@ final class LocalizationTests: XCTestCase {
         XCTAssertEqual(env.language, "en")
         XCTAssertEqual(Localization.t("tab.settings"), "Settings")
     }
+
+    func testRefinedSettingsAndCompanionCopyExistsInBothLanguages() {
+        let keys = [
+            "common.ok",
+            "notice.systemAllowed",
+            "notice.systemDenied",
+            "notice.systemNotDetermined",
+            "notice.openSettings",
+            "notice.permissionExplanation",
+            "notice.debugPendingCount",
+            "ai.model.custom",
+            "ai.managedFixedModel",
+            "ai.modelSelectorHint",
+            "ai.customModelPlaceholder",
+            "ai.customBaseURLHint",
+            "voice.errorTitle",
+            "voice.switchToVoice",
+            "voice.switchToKeyboard",
+            "voice.cancelAndSwitchToKeyboard",
+            "voice.startRecording",
+            "voice.requestingPermission",
+            "voice.recording",
+            "voice.finalizing",
+            "voice.openSettings",
+            "voice.speechPermissionDenied",
+            "voice.microphonePermissionDenied",
+            "voice.recognitionFailed",
+            "voice.noSpeechDetected",
+            "voice.transcriptReady"
+        ]
+
+        for language in ["zh", "en"] {
+            Localization.setLanguage(language)
+            for key in keys {
+                XCTAssertNotEqual(Localization.t(key), key, "Missing \(key) for \(language)")
+            }
+        }
+    }
 }

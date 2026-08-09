@@ -1,12 +1,16 @@
 import SwiftUI
+import UIKit
 
 struct CompanionView: View {
     @EnvironmentObject private var vm: TodoViewModel
     @EnvironmentObject private var lang: LanguageEnvironment
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var buddy = CompanionViewModel()
     @StateObject private var voice = CompanionVoiceRecorder()
-    @State private var voiceError: String?
+    @State private var composer = CompanionComposerState()
+    @State private var voiceError: CompanionVoiceError?
+    @FocusState private var composerFocused: Bool
 
     var body: some View {
         let _ = lang.language
@@ -53,63 +57,163 @@ struct CompanionView: View {
                 buddy.greetingIfNeeded(language: Localization.currentLanguage)
                 buddy.runMoments(items: vm.unarchivedItems)
             }
+            .onDisappear { cancelVoiceInput() }
+            .onChange(of: scenePhase) {
+                if scenePhase != .active { cancelVoiceInput() }
+            }
         }
         .appBg()
     }
 
     private var inputBar: some View {
         HStack(spacing: AppTheme.Spacing.sm) {
-            micButton
+            inputModeButton
 
-            TextField(Localization.t("buddy.placeholder"), text: $buddy.input, axis: .vertical)
-                .lineLimit(1...4)
-                .textFieldStyle(.plain)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(Color.appCardBg)
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusLg)
-                        .stroke(Color.appLine, lineWidth: 1)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusLg))
-                .accessibilityLabel(Localization.t("buddy.placeholder"))
+            if composer.mode == .keyboard {
+                TextField(Localization.t("buddy.placeholder"), text: $buddy.input, axis: .vertical)
+                    .lineLimit(1...4)
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(Color.appCardBg)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusLg)
+                            .stroke(Color.appLine, lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusLg))
+                    .focused($composerFocused)
+                    .accessibilityLabel(Localization.t("buddy.placeholder"))
+                    .accessibilityIdentifier("companion.composer")
 
-            Button {
-                Task {
-                    await buddy.send(items: vm.unarchivedItems, health: vm.healthScore, language: lang.language)
+                Button {
+                    Task {
+                        await buddy.send(items: vm.unarchivedItems, health: vm.healthScore, language: lang.language)
+                    }
+                } label: {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 30))
+                        .foregroundStyle(buddy.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || buddy.isBusy ? Color.appLine : Color.brand)
                 }
-            } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 30))
-                    .foregroundStyle(buddy.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || buddy.isBusy ? Color.appLine : Color.brand)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+                .disabled(buddy.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || buddy.isBusy)
+                .accessibilityLabel(Localization.t("buddy.send"))
+                .accessibilityIdentifier("companion.send")
+            } else {
+                voiceRecordButton
             }
-            .disabled(buddy.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || buddy.isBusy)
-            .accessibilityLabel(Localization.t("buddy.send"))
         }
         .padding(.horizontal, AppTheme.Spacing.md)
         .padding(.vertical, AppTheme.Spacing.sm)
         .background(Color.appSidebarBg)
-        .alert(Localization.t("voice.micPermissionDenied"), isPresented: Binding(get: { voiceError != nil }, set: { if !$0 { voiceError = nil } })) {
+        .alert(Localization.t("voice.errorTitle"), isPresented: Binding(get: { voiceError != nil }, set: { if !$0 { voiceError = nil } })) {
             Button(Localization.t("common.ok"), role: .cancel) {}
+            if voiceErrorNeedsSettings {
+                Button(Localization.t("voice.openSettings")) {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+            }
         } message: {
-            Text(voiceError ?? "")
+            Text(voiceError?.localizedDescription ?? Localization.t("voice.recognitionFailed"))
         }
     }
 
-    // iMessage 风格麦克风按钮：点击开始/结束录音，实时填入输入框
-    private var micButton: some View {
+    private var inputModeButton: some View {
         Button {
-            Task {
-                await toggleRecording()
+            if composer.mode == .keyboard {
+                composer.switchToVoice()
+                composerFocused = false
+            } else {
+                cancelVoiceInput()
             }
         } label: {
-            Image(systemName: voice.isRecording ? "stop.circle.fill" : "mic.fill")
-                .font(.system(size: 24))
-                .foregroundStyle(voice.isRecording ? Color.red : Color.brand)
+            Image(systemName: composer.mode == .keyboard ? "waveform" : "keyboard")
+                .font(.system(size: 21, weight: .medium))
+                .foregroundStyle(Color.appText)
+                .frame(width: 44, height: 44)
+                .background(Color.appCardBg)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(Color.appLine, lineWidth: 1))
         }
         .buttonStyle(.plain)
-        .disabled(buddy.isBusy)
-        .accessibilityLabel(Localization.t(voice.isRecording ? "voice.stopRecording" : "voice.micA11y"))
+        .contentShape(Circle())
+        .accessibilityLabel(inputModeAccessibilityLabel)
+        .accessibilityIdentifier("companion.inputModeToggle")
+    }
+
+    private var inputModeAccessibilityLabel: String {
+        if composer.mode == .keyboard {
+            return Localization.t("voice.switchToVoice")
+        }
+        return Localization.t(voice.state == .idle ? "voice.switchToKeyboard" : "voice.cancelAndSwitchToKeyboard")
+    }
+
+    private var voiceRecordButton: some View {
+        Button {
+            Task { await toggleRecording() }
+        } label: {
+            HStack(spacing: AppTheme.Spacing.sm) {
+                switch voice.state {
+                case .requestingPermission, .finalizing:
+                    ProgressView()
+                case .recording:
+                    Image(systemName: "stop.circle.fill")
+                        .foregroundStyle(Color.red)
+                case .idle:
+                    Image(systemName: "mic.fill")
+                        .foregroundStyle(Color.brand)
+                }
+                Text(voiceButtonText)
+                    .font(AppTheme.Typography.body)
+                    .foregroundStyle(Color.appText)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .background(Color.appCardBg)
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusLg, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusLg, style: .continuous).stroke(Color.appLine, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .disabled(
+            voice.state == .requestingPermission
+                || voice.state == .finalizing
+                || (voice.state == .idle && buddy.isBusy)
+        )
+        .accessibilityLabel(voiceActionAccessibilityLabel)
+        .accessibilityValue(voice.transcript.isEmpty ? "" : voice.transcript)
+        .accessibilityIdentifier("companion.voiceRecord")
+    }
+
+    private var voiceButtonText: String {
+        switch voice.state {
+        case .idle:
+            return Localization.t("voice.startRecording")
+        case .requestingPermission:
+            return Localization.t("voice.requestingPermission")
+        case .recording:
+            return voice.transcript.isEmpty ? Localization.t("voice.recording") : voice.transcript
+        case .finalizing:
+            return Localization.t("voice.finalizing")
+        }
+    }
+
+    private var voiceActionAccessibilityLabel: String {
+        switch voice.state {
+        case .idle:
+            return Localization.t("voice.startRecording")
+        case .requestingPermission:
+            return Localization.t("voice.requestingPermission")
+        case .recording:
+            return Localization.t("voice.stopRecording")
+        case .finalizing:
+            return Localization.t("voice.finalizing")
+        }
+    }
+
+    private var voiceErrorNeedsSettings: Bool {
+        voiceError == .speechPermissionDenied || voiceError == .microphonePermissionDenied
     }
 
     private func toggleRecording() async {
@@ -117,15 +221,33 @@ struct CompanionView: View {
             voice.stop()
             return
         }
-        do {
-            try await voice.start { [weak buddy] transcript in
-                guard let buddy else { return }
-                if !transcript.isEmpty {
-                    buddy.input = transcript
-                }
+        guard !buddy.isBusy else { return }
+        composer.beginRecording(currentDraft: buddy.input)
+        await voice.start(
+            onPartial: { _ in },
+            onFinal: { transcript in
+                buddy.input = composer.finishRecording(transcript: transcript)
+                composerFocused = false
+                UIAccessibility.post(
+                    notification: .announcement,
+                    argument: Localization.t("voice.transcriptReady")
+                )
+            },
+            onError: { error in
+                _ = composer.cancelRecording()
+                voiceError = error
             }
-        } catch {
-            voiceError = error.localizedDescription
+        )
+    }
+
+    private func cancelVoiceInput() {
+        if voice.state != .idle {
+            voice.cancel()
+            if let draft = composer.cancelRecording() {
+                buddy.input = draft
+            }
+        } else {
+            composer.switchToKeyboard()
         }
     }
 
