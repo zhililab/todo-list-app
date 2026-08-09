@@ -4,7 +4,7 @@
 
 An AI-native bilingual todo app with task types, context fields, acceptance criteria, next-step prompts, today plan, and Obsidian export. Available on Web and iOS.
 
-## 功能需求核对
+## 当前能力
 
 - [x] 任务支持类型（Personal / Code / Product / Learning / Life）
 - [x] 任务支持上下文字段（Context）
@@ -12,6 +12,8 @@ An AI-native bilingual todo app with task types, context fields, acceptance crit
 - [x] 任务支持下一步 prompt（Next AI Prompt）
 - [x] 一键导出 Obsidian Markdown（`todo-list-app-YYYY-MM-DD.md`）
 - [x] 今日计划视图（Today Top 5 / 今日计划面板）
+- [x] Web 与 iOS 双端支持分钟级截止时间和本地到期提醒
+- [x] iOS 快速创建任务可从自然语言推断截止时间（如“今天 15:00”“3 小时后”）
 
 ## Repository
 
@@ -41,7 +43,7 @@ An AI-native bilingual todo app with task types, context fields, acceptance crit
 - **商业化**：7 天试用（过期自动降级）+ StoreKit 2 月/年订阅 + 恢复购买 + 交易监听；功能门控（AI 今日计划/高级 Obsidian 导出/任务模板/分析看板/主题包）；付费入口在设置页，试用结束后启动弹出自弹窗
 - **Obsidian 导出**：生成每日 Markdown，支持系统分享面板 + 复制剪贴板（付费功能）
 - **体验**：动画全套尊重 `accessibilityReduceMotion`（完成打勾弹跳 + 闪光覆盖、按钮按压反馈、列表插入移除过渡、统计数字 pop、气泡滑入）；iPad 宽屏双栏；中英双语
-- **质量**：93 个单元测试（13 个测试文件，覆盖模型 / 任务 VM / AI 计划 / Obsidian 导出 / 试用 / Companion / 通知 / 配额客户端 / 本地化），iOS 27 模拟器构建 + 启动冒烟通过
+- **质量**：104 个单元测试（14 个测试文件，覆盖模型 / 任务 VM / AI 计划 / Obsidian 导出 / 试用 / Companion / 通知 / 配额客户端 / 本地化 / 自然语言截止时间解析）；已有 iOS 27 模拟器构建与启动冒烟记录
 
 ## 文件结构
 
@@ -62,7 +64,7 @@ An AI-native bilingual todo app with task types, context fields, acceptance crit
 ├── workers/quota-proxy/  # AI 配额代理 Worker（free/pro 限额，Cloudflare KV）
 └── ios/                  # iOS 端（SwiftUI + SwiftData）
     ├── TodoNative/       # App 源码（Models / ViewModels / Views / Services）
-    ├── TodoNativeTests/  # 93 个单元测试
+    ├── TodoNativeTests/  # 104 个单元测试
     ├── Project.yml       # XcodeGen 源码配置
     └── README.md         # iOS 规划与落地说明
 ```
@@ -83,7 +85,7 @@ iOS 运行方式见 `ios/README.md`（`xcodegen generate` + Xcode 运行，或 `
 - Production: https://todo-list-app.zhili1993.chatgpt.site
 - GitHub 仓库： https://github.com/zhililab/todo-list-app
 
-## iOS 版本（进行中）
+## iOS 版本
 
 - 当前状态与运行说明：`ios/README.md`
 - 架构与订阅实现建议：`ios/Design/ios-architecture-plan.md`
@@ -92,13 +94,15 @@ iOS 运行方式见 `ios/README.md`（`xcodegen generate` + Xcode 运行，或 `
 
 ## 截图
 
-<img width="2740" height="3088" alt="image" src="https://github.com/user-attachments/assets/932a221e-968f-4fd5-8f56-51b4cc2b71f5" />
+![AI-native Todo 本地浏览器实拍](screenshots/web-current.png)
+
+上图为当前本地浏览器实拍（2026-08-09）；界面文字按正常布局渲染。截图资源随仓库提交，克隆后可直接预览，不依赖外部附件链接。
 
 ## 更新日志
 
+- 2026-08-09：iOS 新增自然语言截止时间解析；快速创建任务可识别“今天 / 明天 / 后天”、时段与时刻、以及“X 小时 / 分钟后”，并自动安排本地提醒。同步新增解析测试，iOS 测试增至 104 个 / 14 个文件。
 - 2026-08-09：新增 AI 配额系统（`workers/quota-proxy`：免费 10 条 / Pro 每日 20 条，KV 计数，`X-Device-Id` 匿名）；Web + iOS 双端接入 QuotaClient，Companion 新增语音输入（Web Speech / SFSpeechRecognizer）与 iMessage 风格气泡。
 - 2026-08-08：支持精确到分钟的截止时间与到期提醒（Web + iOS 双端）；Companion 新增本地任务意图兜底；新增微交互与动画（双端，尊重系统减弱动态设置）。
-- 2026-08-08：README 功能特性汇总更新（Web / iOS 双端），同步 iOS 测试用例数（84 个，12 个测试文件）。
 - 2026-08-08：已补充网站 favicon 配置（Tab icon）并上线到 https://todo-list-app.zhili1993.chatgpt.site。
 - 2026-08-08：新增 `site.webmanifest`，增强移动端/站点安装体验，图标统一使用高识别度专业 favicon。
 
