@@ -8,59 +8,45 @@ struct SettingsView: View {
     @EnvironmentObject private var vm: TodoViewModel
     @EnvironmentObject private var aiVM: AIViewModel
     @EnvironmentObject private var lang: LanguageEnvironment
+    @EnvironmentObject private var notificationService: NotificationService
 
     @State private var exportedText = ""
     @State private var exportFileName = "todo-list-app.md"
     @State private var showPaywall = false
     @State private var showExport = false
     @State private var copied = false
-    @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
-    @State private var pendingCount = 0
+    @State private var showNotificationSettingsPrompt = false
+#if DEBUG
     @State private var showTestResult = false
     @State private var sentTestOK = false
+#endif
     @AppStorage("companion_name") private var buddyName = ""
     @AppStorage("companion_greeting_enabled") private var buddyGreeting = true
 
+#if DEBUG
     private var pendingCountText: String {
-        Localization.t("settings.pendingCount", pendingCount)
+        Localization.t("notice.debugPendingCount", notificationService.pendingReminderCount)
     }
+#endif
 
-    private var noticeText: String {
-        switch notificationStatus {
+    private var systemNotificationText: String {
+        switch notificationService.systemAuthorizationStatus {
         case .authorized, .ephemeral, .provisional:
-            return Localization.t("noticeEnabled")
+            return Localization.t("notice.systemAllowed")
         case .denied:
-            return Localization.t("noticeDenied")
-        default:
-            return Localization.t("noticeEnable")
-        }
-    }
-
-    private var noticeIcon: String {
-        switch notificationStatus {
-        case .authorized, .ephemeral, .provisional:
-            return "bell.badge.fill"
-        case .denied:
-            return "bell.slash.fill"
-        default:
-            return "bell.badge"
+            return Localization.t("notice.systemDenied")
+        case .notDetermined:
+            return Localization.t("notice.systemNotDetermined")
+        @unknown default:
+            return Localization.t("notice.systemDenied")
         }
     }
 
     private func refreshNotificationStatus() {
-        NotificationService.authorizationStatus { status in
-            guard let status else { return }
-            DispatchQueue.main.async {
-                notificationStatus = status
-            }
-        }
-        NotificationService.pendingCount { count in
-            DispatchQueue.main.async {
-                pendingCount = count
-            }
-        }
+        Task { await notificationService.refresh() }
     }
 
+#if DEBUG
     // 发送一条 5 秒后的测试通知，验证权限/链路
     private func sendTestNotification() {
         let content = UNMutableNotificationContent()
@@ -79,6 +65,7 @@ struct SettingsView: View {
             }
         }
     }
+#endif
 
     var body: some View {
         let _ = lang.language
@@ -94,30 +81,43 @@ struct SettingsView: View {
                 }
 
                 Section(Localization.t("noticeTitle")) {
-                    Button {
-                        switch notificationStatus {
-                        case .denied:
+                    Toggle(Localization.t("noticeEnable"), isOn: Binding(
+                        get: { notificationService.isRemindersEnabled },
+                        set: { requested in
+                            Task {
+                                let result = await notificationService.setRemindersEnabled(
+                                    requested,
+                                    legacyTaskIDs: Set(vm.items.map(\.id))
+                                )
+                                if result == .enabled {
+                                    vm.restoreDueReminders()
+                                } else if result == .permissionDenied || result == .restricted {
+                                    showNotificationSettingsPrompt = true
+                                }
+                            }
+                        }
+                    ))
+
+                    LabeledContent(Localization.t("notice.systemStatus")) {
+                        Text(systemNotificationText)
+                            .foregroundStyle(notificationService.systemAuthorizationStatus == .denied ? Color.red : Color.appMuted)
+                    }
+
+                    if notificationService.systemAuthorizationStatus == .denied {
+                        Button(Localization.t("notice.openSettings")) {
                             if let url = URL(string: UIApplication.openSettingsURLString) {
                                 UIApplication.shared.open(url)
                             }
-                        case .authorized, .ephemeral, .provisional:
-                            refreshNotificationStatus()
-                        default:
-                            NotificationService.requestAuthorization { _ in
-                                refreshNotificationStatus()
-                            }
                         }
-                    } label: {
-                        HStack {
-                            Text(noticeText)
-                                .foregroundStyle(Color.accentBlue)
-                            Spacer()
-                            Image(systemName: noticeIcon)
-                                .foregroundStyle(notificationStatus == .denied ? Color.red : (notificationStatus == .authorized || notificationStatus == .ephemeral || notificationStatus == .provisional ? Color.success : Color.appMuted))
-                        }
+                        .foregroundStyle(Color.accentBlue)
                     }
+
+                    Text(Localization.t("notice.permissionExplanation"))
+                        .font(AppTheme.Typography.caption2)
+                        .foregroundStyle(Color.appMuted)
                     .onAppear { refreshNotificationStatus() }
 
+#if DEBUG
                     Button {
                         sendTestNotification()
                     } label: {
@@ -130,6 +130,7 @@ struct SettingsView: View {
                                 .foregroundStyle(Color.appMuted)
                         }
                     }
+#endif
                 }
 
                 Section(Localization.t("settings.account")) {
@@ -158,25 +159,49 @@ struct SettingsView: View {
                             Text(provider.name).tag(provider.id)
                         }
                     }
+                    .disabled(aiVM.usesManagedQuota)
 
                     SecureField(Localization.t("ai.key"), text: $aiVM.apiKey)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .accessibilityLabel(Localization.t("ai.key"))
 
-                    TextField(Localization.t("ai.baseUrl"), text: $aiVM.customBaseURL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .keyboardType(.URL)
-                        .accessibilityLabel(Localization.t("ai.baseUrl"))
+                    Picker(Localization.t("ai.model"), selection: $aiVM.modelSelection) {
+                        ForEach(aiVM.availableModels) { option in
+                            Text(option.displayName).tag(AIModelSelection.preset(option.id))
+                        }
+                        Text(Localization.t("ai.model.custom")).tag(AIModelSelection.custom)
+                    }
+                    .pickerStyle(.navigationLink)
+                    .disabled(aiVM.usesManagedQuota)
 
-                    TextField(Localization.t("ai.model"), text: $aiVM.customModel)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .accessibilityLabel(Localization.t("ai.model"))
+                    if aiVM.usesCustomModel {
+                        TextField(Localization.t("ai.customModelPlaceholder"), text: $aiVM.customModel)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .disabled(aiVM.usesManagedQuota)
+                            .accessibilityLabel(Localization.t("ai.customModelPlaceholder"))
+                    }
 
-                    Text(aiVM.apiKey.isEmpty
-                        ? Localization.t("ai.keyNoConfig")
+                    if aiVM.showsCustomBaseURL {
+                        TextField(Localization.t("ai.baseUrl"), text: $aiVM.customBaseURL)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .keyboardType(.URL)
+                            .disabled(aiVM.usesManagedQuota)
+                            .accessibilityLabel(Localization.t("ai.baseUrl"))
+
+                        Text(Localization.t("ai.customBaseURLHint"))
+                            .font(AppTheme.Typography.caption2)
+                            .foregroundStyle(Color.appMuted)
+                    } else if !aiVM.usesManagedQuota {
+                        Text(Localization.t("ai.modelSelectorHint"))
+                            .font(AppTheme.Typography.caption2)
+                            .foregroundStyle(Color.appMuted)
+                    }
+
+                    Text(aiVM.usesManagedQuota
+                        ? Localization.t("ai.managedFixedModel")
                         : Localization.t("ai.keyConfigured"))
                         .font(AppTheme.Typography.caption2)
                         .foregroundStyle(Color.appMuted)
@@ -244,6 +269,7 @@ struct SettingsView: View {
                     }
                 }
             }
+#if DEBUG
             .alert(
                 Localization.t(sentTestOK ? "settings.testNotification" : "settings.testFailed"),
                 isPresented: $showTestResult
@@ -253,6 +279,17 @@ struct SettingsView: View {
                 Text(sentTestOK
                     ? Localization.t("settings.testSent")
                     : Localization.t("settings.testDenied"))
+            }
+#endif
+            .alert(Localization.t("notice.systemDenied"), isPresented: $showNotificationSettingsPrompt) {
+                Button(Localization.t("common.cancel"), role: .cancel) {}
+                Button(Localization.t("notice.openSettings")) {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+            } message: {
+                Text(Localization.t("notice.permissionExplanation"))
             }
             .sheet(isPresented: $showExport) {
                 NavigationStack {

@@ -5,6 +5,7 @@ import SwiftData
 final class TodoViewModel: ObservableObject {
     private let modelContext: ModelContext
     private let planner = AIPlanService()
+    private let reminderScheduler: ReminderScheduling
 
     @Published private(set) var items: [TodoItem] = []
     @Published var selectedType: TaskType? = nil
@@ -68,8 +69,9 @@ final class TodoViewModel: ObservableObject {
         Self.healthLabelStatic(score ?? healthScore)
     }
 
-    init(modelContainer: ModelContainer) {
+    init(modelContainer: ModelContainer, reminderScheduler: ReminderScheduling? = nil) {
         self.modelContext = modelContainer.mainContext
+        self.reminderScheduler = reminderScheduler ?? NotificationService()
         fetchItems()
         generatePlan()
     }
@@ -122,7 +124,7 @@ final class TodoViewModel: ObservableObject {
         )
         modelContext.insert(item)
         if let dueDate {
-            NotificationService.scheduleDueReminder(taskID: item.id, title: item.title, dueDate: dueDate)
+            reminderScheduler.scheduleDueReminder(taskID: item.id, title: item.title, dueDate: dueDate)
         }
         save()
     }
@@ -169,7 +171,7 @@ final class TodoViewModel: ObservableObject {
         )
         modelContext.insert(item)
         if let inferredDue {
-            NotificationService.scheduleDueReminder(taskID: item.id, title: item.title, dueDate: inferredDue)
+            reminderScheduler.scheduleDueReminder(taskID: item.id, title: item.title, dueDate: inferredDue)
         }
         save()
     }
@@ -179,8 +181,10 @@ final class TodoViewModel: ObservableObject {
         item.updatedAt = Date()
         if status == .done {
             item.completedAt = Date()
-            NotificationService.cancelReminder(taskID: item.id)
+        } else if status == .todo || status == .doing {
+            item.completedAt = nil
         }
+        syncReminder(for: item)
         save()
     }
 
@@ -196,30 +200,26 @@ final class TodoViewModel: ObservableObject {
         item.priority = priority
         item.dueDate = dueDate
         item.updatedAt = Date()
-        if let dueDate {
-            NotificationService.scheduleDueReminder(taskID: item.id, title: item.title, dueDate: dueDate)
-        } else {
-            NotificationService.cancelReminder(taskID: item.id)
-        }
+        syncReminder(for: item)
         save()
     }
 
     func clearCompleted() {
         for item in completedItems {
-            NotificationService.cancelReminder(taskID: item.id)
+            reminderScheduler.cancelReminder(taskID: item.id)
             modelContext.delete(item)
         }
         save()
     }
 
     func delete(_ item: TodoItem) {
-        NotificationService.cancelReminder(taskID: item.id)
+        reminderScheduler.cancelReminder(taskID: item.id)
         modelContext.delete(item)
         save()
     }
 
     func archive(_ item: TodoItem) {
-        NotificationService.cancelReminder(taskID: item.id)
+        reminderScheduler.cancelReminder(taskID: item.id)
         item.isArchived = true
         item.updatedAt = Date()
         save()
@@ -227,6 +227,13 @@ final class TodoViewModel: ObservableObject {
 
     func generatePlan() {
         todayPlan = planner.generateTodayPlan(from: items)
+    }
+
+    func restoreDueReminders(now: Date = Date()) {
+        for item in items where isReminderEligible(item) {
+            guard let dueDate = item.dueDate, dueDate > now else { continue }
+            reminderScheduler.scheduleDueReminder(taskID: item.id, title: item.title, dueDate: dueDate)
+        }
     }
 
     func exportMarkdown(for targetDate: Date = Date()) -> String {
@@ -241,6 +248,18 @@ final class TodoViewModel: ObservableObject {
         } catch {
             print("Save error: \(error)")
         }
+    }
+
+    private func syncReminder(for item: TodoItem) {
+        guard isReminderEligible(item), let dueDate = item.dueDate else {
+            reminderScheduler.cancelReminder(taskID: item.id)
+            return
+        }
+        reminderScheduler.scheduleDueReminder(taskID: item.id, title: item.title, dueDate: dueDate)
+    }
+
+    private func isReminderEligible(_ item: TodoItem) -> Bool {
+        !item.isArchived && (item.status == .todo || item.status == .doing)
     }
 }
 
