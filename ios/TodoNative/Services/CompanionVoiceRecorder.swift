@@ -1,41 +1,27 @@
-import AVFoundation
-import Speech
+import Combine
+import Foundation
 
-// 伙伴语音输入：SFSpeechRecognizer（zh-CN / en-US 跟随语言设置）+ AVAudioEngine 实时辨识。
 @MainActor
 final class CompanionVoiceRecorder: ObservableObject {
-    enum MicState {
+    enum State: Equatable {
         case idle
+        case requestingPermission
         case recording
+        case finalizing
     }
 
-    enum VoiceError: LocalizedError {
-        case speechUnavailable
-        case permissionDenied
-        case sessionFailed(message: String)
-        case engineFailed(message: String)
+    @Published private(set) var state: State = .idle
+    @Published private(set) var transcript = ""
 
-        var errorDescription: String? {
-            switch self {
-            case .speechUnavailable:
-                return Localization.t("voice.speechUnavailable")
-            case .permissionDenied:
-                return Localization.t("voice.micPermissionDenied")
-            case .sessionFailed(let message):
-                return Localization.t("voice.sessionFailed", message)
-            case .engineFailed(let message):
-                return Localization.t("voice.engineFailed", message)
-            }
-        }
-    }
-
-    @Published var state: MicState = .idle
-    @Published var transcript = ""
-
-    private let engine = AVAudioEngine()
-    private var recognitionTask: SFSpeechRecognitionTask?
-    private var recognizer: SFSpeechRecognizer?
-    private var onTranscript: ((String) -> Void)?
+    private let runtime: any CompanionVoiceRuntime
+    private let locale: Locale
+    private let finalizationTimeoutNanoseconds: UInt64
+    private var onPartial: (@MainActor @Sendable (String) -> Void)?
+    private var onFinal: (@MainActor @Sendable (String) -> Void)?
+    private var onError: (@MainActor @Sendable (CompanionVoiceError) -> Void)?
+    private var generation: UInt64 = 0
+    private var activeGeneration: UInt64?
+    private var finalizationTask: Task<Void, Never>?
 
     var isRecording: Bool { state == .recording }
 
@@ -43,117 +29,155 @@ final class CompanionVoiceRecorder: ObservableObject {
         Locale(identifier: Localization.currentLanguage == "en" ? "en-US" : "zh-CN")
     }
 
-    // 请求/检查语音识别权限；被拒返回 false（由视图弹提示）
-    func requestAuthorization() async -> Bool {
-        switch SFSpeechRecognizer.authorizationStatus() {
-        case .authorized:
-            return true
-        case .denied, .restricted:
-            return false
-        case .notDetermined:
-            return await withCheckedContinuation { continuation in
-                SFSpeechRecognizer.requestAuthorization { status in
-                    Task { @MainActor in
-                        continuation.resume(returning: status == .authorized)
-                    }
-                }
-            }
-        @unknown default:
-            return false
+    init(
+        runtime: any CompanionVoiceRuntime = SystemCompanionVoiceRuntime(),
+        locale: Locale = CompanionVoiceRecorder.speechLocale,
+        finalizationTimeoutNanoseconds: UInt64 = 2_000_000_000
+    ) {
+        self.runtime = runtime
+        self.locale = locale
+        self.finalizationTimeoutNanoseconds = finalizationTimeoutNanoseconds
+    }
+
+    func start(
+        onPartial: @escaping @MainActor @Sendable (String) -> Void = { _ in },
+        onFinal: @escaping @MainActor @Sendable (String) -> Void = { _ in },
+        onError: @escaping @MainActor @Sendable (CompanionVoiceError) -> Void = { _ in }
+    ) async {
+        do {
+            try await begin(onPartial: onPartial, onFinal: onFinal, onError: onError)
+        } catch {
+            // `begin` has already cleaned up and delivered the typed error.
         }
     }
 
-    func start(onTranscript: @escaping (String) -> Void) async throws {
-        guard await ensureMicrophonePermission() else {
-            throw VoiceError.permissionDenied
-        }
-        guard let recognizer = SFSpeechRecognizer(locale: Self.speechLocale),
-              recognizer.isAvailable else {
-            throw VoiceError.speechUnavailable
-        }
-
-        let session = AVAudioSession.sharedInstance()
-        do {
-            try session.setCategory(.record, mode: .measurement, options: .duckOthers)
-            try session.setActive(true, options: .notifyOthersOnDeactivation)
-        } catch {
-            throw VoiceError.sessionFailed(message: error.localizedDescription)
-        }
-
-        self.recognizer = recognizer
-        self.onTranscript = onTranscript
-
-        let request = SFSpeechAudioBufferRecognitionRequest()
-        request.shouldReportPartialResults = true
-
-        let inputNode = engine.inputNode
-        let format = inputNode.outputFormat(forBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak request] buffer, _ in
-            request?.append(buffer)
-        }
-
-        engine.prepare()
-        do {
-            try engine.start()
-        } catch {
-            inputNode.removeTap(onBus: 0)
-            try? session.setActive(false, options: .notifyOthersOnDeactivation)
-            throw VoiceError.engineFailed(message: error.localizedDescription)
-        }
-
-        transcript = ""
-        state = .recording
-
-        recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                if let result {
-                    self.transcript = result.bestTranscription.formattedString
-                    self.onTranscript?(self.transcript)
-                }
-                if error != nil || result?.isFinal == true {
-                    self.stop(callingTranscript: false)
-                }
-            }
-        }
+    // Compatibility bridge for the existing composer. New callers should keep
+    // partial and final transcription handlers separate.
+    func start(onTranscript: @escaping @MainActor @Sendable (String) -> Void) async throws {
+        try await begin(onPartial: onTranscript, onFinal: onTranscript, onError: { _ in })
     }
 
     func stop() {
-        stop(callingTranscript: true)
+        guard state == .recording, let currentGeneration = activeGeneration else { return }
+        state = .finalizing
+        runtime.stop()
+        scheduleFinalizationTimeout(for: currentGeneration)
     }
 
-    private func stop(callingTranscript: Bool) {
-        guard state == .recording else { return }
-        let final = transcript
-        cleanup()
-        state = .idle
-        if callingTranscript && !final.isEmpty {
-            onTranscript?(final)
-        }
-        onTranscript = nil
+    func cancel() {
+        guard state != .idle, let currentGeneration = activeGeneration else { return }
+        runtime.cancel()
+        reset(generation: currentGeneration)
+    }
+
+    private func begin(
+        onPartial: @escaping @MainActor @Sendable (String) -> Void,
+        onFinal: @escaping @MainActor @Sendable (String) -> Void,
+        onError: @escaping @MainActor @Sendable (CompanionVoiceError) -> Void
+    ) async throws {
+        guard state == .idle else { return }
+
+        generation &+= 1
+        let currentGeneration = generation
+        activeGeneration = currentGeneration
+
+        self.onPartial = onPartial
+        self.onFinal = onFinal
+        self.onError = onError
         transcript = ""
+        state = .requestingPermission
+
+        do {
+            let speechPermission = await runtime.requestSpeechPermission()
+            guard isActive(currentGeneration, state: .requestingPermission) else { return }
+            guard speechPermission == .authorized else {
+                throw CompanionVoiceError.speechPermissionDenied
+            }
+
+            let microphonePermission = await runtime.requestMicrophonePermission()
+            guard isActive(currentGeneration, state: .requestingPermission) else { return }
+            guard microphonePermission == .authorized else {
+                throw CompanionVoiceError.microphonePermissionDenied
+            }
+
+            guard runtime.isRecognizerAvailable(locale: locale) else {
+                throw CompanionVoiceError.recognizerUnavailable
+            }
+            guard isActive(currentGeneration, state: .requestingPermission) else { return }
+
+            state = .recording
+            try runtime.start(locale: locale) { [weak self] event in
+                self?.handle(event, generation: currentGeneration)
+            }
+        } catch let error as CompanionVoiceError {
+            deliver(error, generation: currentGeneration)
+            throw error
+        } catch {
+            let voiceError = CompanionVoiceError.recognitionFailed
+            deliver(voiceError, generation: currentGeneration)
+            throw voiceError
+        }
     }
 
-    private func ensureMicrophonePermission() async -> Bool {
-        switch AVAudioApplication.shared.recordPermission {
-        case .granted:
-            return true
-        case .denied:
-            return false
-        default:
-            return await AVAudioApplication.requestRecordPermission()
+    private func handle(_ event: CompanionVoiceRuntimeEvent, generation currentGeneration: UInt64) {
+        guard activeGeneration == currentGeneration else { return }
+        switch event {
+        case .partial(let partial):
+            guard state == .recording else { return }
+            transcript = partial
+            onPartial?(partial)
+
+        case .final(let final):
+            guard state == .recording || state == .finalizing else { return }
+            guard !final.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                deliver(.noSpeechDetected, generation: currentGeneration)
+                return
+            }
+            let callback = onFinal
+            reset(generation: currentGeneration)
+            callback?(final)
+
+        case .failure(let error):
+            guard state != .idle else { return }
+            deliver(error, generation: currentGeneration)
         }
     }
 
-    private func cleanup() {
-        if engine.isRunning {
-            engine.stop()
+    private func deliver(_ error: CompanionVoiceError, generation currentGeneration: UInt64) {
+        guard activeGeneration == currentGeneration else { return }
+        let callback = onError
+        runtime.cancel()
+        reset(generation: currentGeneration)
+        callback?(error)
+    }
+
+    private func scheduleFinalizationTimeout(for currentGeneration: UInt64) {
+        finalizationTask?.cancel()
+        let timeout = finalizationTimeoutNanoseconds
+        finalizationTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: timeout)
+            guard !Task.isCancelled, let self else { return }
+            guard self.isActive(currentGeneration, state: .finalizing) else { return }
+            let error: CompanionVoiceError = self.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? .noSpeechDetected
+                : .recognitionFailed
+            self.deliver(error, generation: currentGeneration)
         }
-        if engine.inputNode.numberOfInputs > 0 {
-            engine.inputNode.removeTap(onBus: 0)
-        }
-        recognitionTask?.cancel()
-        recognitionTask = nil
-        recognizer = nil
+    }
+
+    private func isActive(_ currentGeneration: UInt64, state expectedState: State) -> Bool {
+        activeGeneration == currentGeneration && state == expectedState
+    }
+
+    private func reset(generation currentGeneration: UInt64) {
+        guard activeGeneration == currentGeneration else { return }
+        activeGeneration = nil
+        finalizationTask?.cancel()
+        finalizationTask = nil
+        state = .idle
+        transcript = ""
+        onPartial = nil
+        onFinal = nil
+        onError = nil
     }
 }
