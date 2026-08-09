@@ -45,7 +45,7 @@ let upstreamMode = 'ok'; // 'ok' | 'error'
 globalThis.fetch = async (url, init) => {
   assert.equal(url, 'https://api.deepseek.com/chat/completions');
   const body = JSON.parse(init.body);
-  assert.equal(body.model, 'deepseek-chat');
+  assert.equal(body.model, 'deepseek-v4-flash');
   assert.ok(init.headers.Authorization === 'Bearer sk-test');
   if (upstreamMode === 'error') {
     return new Response('{"error":{"message":"upstream boom"}}', {

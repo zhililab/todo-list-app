@@ -6,18 +6,31 @@ final class OpenAIServiceTests: XCTestCase {
     private let providerKey = "ai_provider"
     private let baseURLKey = "ai_base_url"
     private let modelKey = "ai_model"
+    private let migrationKey = "ai_provider_scoped_config_migrated"
 
     override func setUp() {
         super.setUp()
         UserDefaults.standard.removeObject(forKey: providerKey)
         UserDefaults.standard.removeObject(forKey: baseURLKey)
         UserDefaults.standard.removeObject(forKey: modelKey)
+        UserDefaults.standard.removeObject(forKey: migrationKey)
+        for provider in AIProvider.registry {
+            UserDefaults.standard.removeObject(forKey: "ai_model_selection.\(provider.id)")
+            UserDefaults.standard.removeObject(forKey: "ai_custom_model.\(provider.id)")
+            UserDefaults.standard.removeObject(forKey: "ai_custom_base_url.\(provider.id)")
+        }
     }
 
     override func tearDown() {
         UserDefaults.standard.removeObject(forKey: providerKey)
         UserDefaults.standard.removeObject(forKey: baseURLKey)
         UserDefaults.standard.removeObject(forKey: modelKey)
+        UserDefaults.standard.removeObject(forKey: migrationKey)
+        for provider in AIProvider.registry {
+            UserDefaults.standard.removeObject(forKey: "ai_model_selection.\(provider.id)")
+            UserDefaults.standard.removeObject(forKey: "ai_custom_model.\(provider.id)")
+            UserDefaults.standard.removeObject(forKey: "ai_custom_base_url.\(provider.id)")
+        }
         super.tearDown()
     }
 
@@ -41,15 +54,56 @@ final class OpenAIServiceTests: XCTestCase {
 
     func testDeepSeekDefaults() {
         XCTAssertEqual(AIProvider.provider(id: "deepseek").baseURL, "https://api.deepseek.com")
-        XCTAssertEqual(AIProvider.provider(id: "deepseek").defaultModel, "deepseek-chat")
+        XCTAssertEqual(AIProvider.provider(id: "deepseek").defaultModel, "deepseek-v4-flash")
+        XCTAssertEqual(AIProvider.provider(id: "deepseek").models.map(\.id), [
+            "deepseek-v4-flash",
+            "deepseek-v4-pro"
+        ])
     }
 
     func testCustomOverridesProviderDefaults() {
         OpenAIService.saveProviderID("deepseek")
-        OpenAIService.saveCustomModel("deepseek-reasoner")
+        OpenAIService.saveModelSelection(.custom, providerID: "deepseek")
+        OpenAIService.saveCustomModel("deepseek-v4-pro", providerID: "deepseek")
         let config = OpenAIService.activeConfig()
         XCTAssertEqual(config.baseURL, "https://api.deepseek.com")
-        XCTAssertEqual(config.model, "deepseek-reasoner")
+        XCTAssertEqual(config.model, "deepseek-v4-pro")
+    }
+
+    func testProviderSelectionsAreIndependent() {
+        OpenAIService.saveModelSelection(.preset("gpt-5-mini"), providerID: "openai")
+        OpenAIService.saveModelSelection(.custom, providerID: "deepseek")
+        OpenAIService.saveCustomModel("deepseek-v4-pro", providerID: "deepseek")
+
+        XCTAssertEqual(OpenAIService.modelSelection(providerID: "openai"), .preset("gpt-5-mini"))
+        XCTAssertEqual(OpenAIService.modelSelection(providerID: "deepseek"), .custom)
+        XCTAssertEqual(OpenAIService.customModel(providerID: "deepseek"), "deepseek-v4-pro")
+        XCTAssertEqual(OpenAIService.customModel(providerID: "openai"), "")
+    }
+
+    func testUnknownPresetFallsBackToProviderDefault() {
+        OpenAIService.saveModelSelection(.preset("retired-model"), providerID: "openai")
+        OpenAIService.saveProviderID("openai")
+
+        XCTAssertEqual(OpenAIService.modelSelection(providerID: "openai"), .preset("gpt-4.1-mini"))
+        XCTAssertEqual(OpenAIService.activeConfig().model, "gpt-4.1-mini")
+    }
+
+    func testLegacyConfigMigratesOnlyOnceToCurrentProvider() {
+        UserDefaults.standard.set("deepseek", forKey: providerKey)
+        UserDefaults.standard.set("legacy-model", forKey: modelKey)
+        UserDefaults.standard.set("https://legacy.example/v1", forKey: baseURLKey)
+
+        XCTAssertEqual(OpenAIService.modelSelection(providerID: "deepseek"), .custom)
+        XCTAssertEqual(OpenAIService.customModel(providerID: "deepseek"), "legacy-model")
+        XCTAssertEqual(OpenAIService.customBaseURL(providerID: "deepseek"), "https://legacy.example/v1")
+
+        UserDefaults.standard.set("changed-legacy", forKey: modelKey)
+        XCTAssertEqual(OpenAIService.customModel(providerID: "deepseek"), "legacy-model")
+    }
+
+    func testManagedQuotaUsesCurrentDeepSeekModel() {
+        XCTAssertEqual(OpenAIService.managedModelID, "deepseek-v4-flash")
     }
 
     func testUnknownProviderFallsBackToOpenAI() {

@@ -6,13 +6,29 @@ final class AIViewModel: ObservableObject {
         didSet { OpenAIService.saveAPIKey(apiKey) }
     }
     @Published var providerID: String {
-        didSet { OpenAIService.saveProviderID(providerID) }
+        didSet {
+            guard !isLoadingProviderConfiguration else { return }
+            OpenAIService.saveProviderID(providerID)
+            loadProviderConfiguration()
+        }
+    }
+    @Published var modelSelection: AIModelSelection {
+        didSet {
+            guard !isLoadingProviderConfiguration else { return }
+            OpenAIService.saveModelSelection(modelSelection, providerID: providerID)
+        }
     }
     @Published var customBaseURL: String {
-        didSet { OpenAIService.saveCustomBaseURL(customBaseURL) }
+        didSet {
+            guard !isLoadingProviderConfiguration else { return }
+            OpenAIService.saveCustomBaseURL(customBaseURL, providerID: providerID)
+        }
     }
     @Published var customModel: String {
-        didSet { OpenAIService.saveCustomModel(customModel) }
+        didSet {
+            guard !isLoadingProviderConfiguration else { return }
+            OpenAIService.saveCustomModel(customModel, providerID: providerID)
+        }
     }
     @Published var isBusy = false
     @Published var outputText = ""
@@ -21,27 +37,56 @@ final class AIViewModel: ObservableObject {
     @Published var isTodayPlanOutput = false
     @Published var quotaExceeded = false
 
+    private var isLoadingProviderConfiguration = true
+
     var providers: [AIProvider] { AIProvider.registry }
 
     var importHandler: (([String]) -> Void)?
 
     init() {
         apiKey = OpenAIService.apiKey()
-        providerID = OpenAIService.providerID()
-        customBaseURL = OpenAIService.customBaseURL()
-        customModel = OpenAIService.customModel()
+        let storedProviderID = OpenAIService.providerID()
+        providerID = storedProviderID
+        modelSelection = OpenAIService.modelSelection(providerID: storedProviderID)
+        customBaseURL = OpenAIService.customBaseURL(providerID: storedProviderID)
+        customModel = OpenAIService.customModel(providerID: storedProviderID)
+        isLoadingProviderConfiguration = false
     }
 
     var activeProvider: AIProvider {
         AIProvider.provider(id: providerID)
     }
 
+    var availableModels: [AIModelOption] { activeProvider.models }
+
+    var usesCustomModel: Bool {
+        if case .custom = modelSelection { return true }
+        return false
+    }
+
+    var showsCustomBaseURL: Bool { providerID == "custom" }
+
+    var usesManagedQuota: Bool { apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
     var effectiveBaseURL: String {
         customBaseURL.isEmpty ? activeProvider.baseURL : customBaseURL
     }
 
     var effectiveModel: String {
-        customModel.isEmpty ? activeProvider.defaultModel : customModel
+        switch modelSelection {
+        case .custom:
+            return customModel.isEmpty ? activeProvider.defaultModel : customModel
+        case .preset(let id):
+            return activeProvider.models.contains { $0.id == id } ? id : activeProvider.defaultModel
+        }
+    }
+
+    private func loadProviderConfiguration() {
+        isLoadingProviderConfiguration = true
+        modelSelection = OpenAIService.modelSelection(providerID: providerID)
+        customBaseURL = OpenAIService.customBaseURL(providerID: providerID)
+        customModel = OpenAIService.customModel(providerID: providerID)
+        isLoadingProviderConfiguration = false
     }
 
     func runBreakdown(goal: String, items: [TodoItem] = []) {

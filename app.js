@@ -294,7 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 exceeded: 'AI 额度已用完',
                 exceededFree: '免费额度已用完：订阅 Pro 或填自己的 API Key',
                 exceededDaily: '今日额度已用完，明天恢复',
-                proxyHint: '正在使用 App 托管额度（deepseek-chat）',
+                proxyHint: '正在使用 App 托管额度（DeepSeek V4 Flash）',
                 signIn: '登录',
                 goSettings: '去 AI 设置',
                 close: '关闭'
@@ -494,7 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 exceeded: 'AI quota used up',
                 exceededFree: 'Free quota used up: subscribe to Pro or add your own API Key',
                 exceededDaily: 'Daily quota used up, back again tomorrow',
-                proxyHint: 'Using app-managed quota (deepseek-chat)',
+                proxyHint: 'Using app-managed quota (DeepSeek V4 Flash)',
                 signIn: 'Sign in',
                 goSettings: 'Open AI settings',
                 close: 'Close'
@@ -513,7 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 多家 OpenAI 兼容服务商：标记请求走 chat/completions
     const AI_PROVIDERS = {
         openai: { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4.1-mini' },
-        deepseek: { name: 'DeepSeek', baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat' },
+        deepseek: { name: 'DeepSeek', baseUrl: 'https://api.deepseek.com', model: 'deepseek-v4-flash' },
         moonshot: { name: 'Moonshot (Kimi)', baseUrl: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k' },
         zhipu: { name: 'Zhipu GLM', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash' },
         qwen: { name: 'Qwen', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
@@ -1288,10 +1288,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const route = buddyRoute(Boolean(openaiKeyInput.value.trim()));
             let reply;
             if (route === 'proxy') {
-                // 走 app 托管额度：模型固定 deepseek-chat
+                // 走 app 托管额度：模型固定 deepseek-v4-flash
                 setAiStatus(t('quota.proxyHint'));
                 const data = await QuotaProxy.request({
-                    model: 'deepseek-chat',
+                    model: 'deepseek-v4-flash',
                     messages: [
                         { role: 'system', content: ctx.systemPrompt },
                         { role: 'user', content: ctx.userPrompt }

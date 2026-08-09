@@ -130,7 +130,7 @@ export async function chatCompletions(env, request) {
   } catch {
     return json(400, { error: { code: 'invalid_request_body', message: 'body must be valid JSON' } });
   }
-  body.model = 'deepseek-chat';
+  body.model = 'deepseek-v4-flash';
 
   // 3. 转发上游
   let upstream;

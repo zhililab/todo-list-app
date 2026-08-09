@@ -1,7 +1,7 @@
 import Foundation
 
 // 与 workers/quota-proxy 契约对齐：
-//   POST {base}/proxy/chat/completions — 转发 AI 请求（model 强制 deepseek-chat）
+//   POST {base}/proxy/chat/completions — 转发 AI 请求（model 强制 deepseek-v4-flash）
 //   GET  {base}/proxy/quota          — 当前设备额度快照
 //   POST {base}/proxy/register-pro   — 上传 StoreKit 交易 JWT 开通 Pro 额度
 // 所有请求带 X-Device-Id（匿名设备 ID）。不引入第三方。
