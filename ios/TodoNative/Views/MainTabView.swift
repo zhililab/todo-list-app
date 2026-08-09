@@ -23,6 +23,10 @@ struct MainTabView: View {
             SettingsView()
                 .tabItem { Label(Localization.t("tab.settings"), systemImage: "gearshape") }
                 .tag(2)
+
+            CompanionView()
+                .tabItem { Label(Localization.t("tab.companion"), systemImage: "bubble.left.and.bubble.right") }
+                .tag(3)
         }
         .onAppear {
             if trialManager.remainingDays == 0 && !purchaseManager.hasPremium {

@@ -599,9 +599,130 @@ button {
 .detail {
     padding: 16px;
     background: #fffefc;
-    display: grid;
-    grid-template-rows: auto auto auto auto auto auto auto;
+    display: flex;
+    flex-direction: column;
     gap: 8px;
+}
+
+.panel-tabs {
+    display: flex;
+    gap: 6px;
+}
+
+.panel-tab {
+    flex: 1;
+    border: 1px solid #eaded7;
+    background: #fff;
+    color: #6a635e;
+    padding: 9px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    font: inherit;
+}
+
+.panel-tab.active {
+    border-color: transparent;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 600;
+}
+
+#buddy-panel {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    gap: 8px;
+    min-height: 360px;
+}
+
+#buddy-panel[hidden] {
+    display: none;
+}
+
+#buddy-messages {
+    display: grid;
+    gap: 8px;
+    max-height: 420px;
+    overflow-y: auto;
+    align-content: start;
+}
+
+.buddy-empty {
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+    padding: 26px 0;
+}
+
+.buddy-msg {
+    max-width: 92%;
+    border-radius: 14px;
+    padding: 10px 12px;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.buddy-msg.assistant {
+    justify-self: start;
+    background: var(--accent-soft);
+    color: #4a3326;
+    border-bottom-left-radius: 4px;
+}
+
+.buddy-msg.user {
+    justify-self: end;
+    background: #eef4ff;
+    color: #2c3e58;
+    border-bottom-right-radius: 4px;
+}
+
+.buddy-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.buddy-action-btn {
+    border: 1px solid #eaded7;
+    background: #fff;
+    color: var(--accent);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.buddy-input-row {
+    display: flex;
+    gap: 8px;
+}
+
+#buddy-input {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid #eaded7;
+    background: #fff;
+    color: #36312e;
+    border-radius: 10px;
+    padding: 11px 12px;
+}
+
+#buddy-send {
+    border: 0;
+    background: var(--accent);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+#buddy-send:disabled {
+    opacity: 0.58;
+    cursor: not-allowed;
 }
 
 .assistant-head h2 {

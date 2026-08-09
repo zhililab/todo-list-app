@@ -13,6 +13,8 @@ struct SettingsView: View {
     @State private var showPaywall = false
     @State private var showExport = false
     @State private var copied = false
+    @AppStorage("companion_name") private var buddyName = ""
+    @AppStorage("companion_greeting_enabled") private var buddyGreeting = true
 
     var body: some View {
         let _ = lang.language
@@ -66,6 +68,21 @@ struct SettingsView: View {
                         : Localization.t("ai.keyConfigured"))
                         .font(AppTheme.Typography.caption2)
                         .foregroundStyle(Color.appMuted)
+                }
+
+                Section(Localization.t("buddy.settings")) {
+                    TextField(Localization.t("buddy.name"), text: $buddyName)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .accessibilityLabel(Localization.t("buddy.name"))
+
+                    Toggle(Localization.t("buddy.greeting"), isOn: $buddyGreeting)
+
+                    LabeledContent(Localization.t("buddy.directWrite")) {
+                        Text(Localization.t("buddy.comingSoon"))
+                            .font(AppTheme.Typography.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Section(Localization.t("settings.obsidian")) {

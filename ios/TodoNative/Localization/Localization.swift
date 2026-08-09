@@ -9,6 +9,7 @@ enum Localization {
             "tab.today": "今日计划",
             "tab.tasks": "任务",
             "tab.settings": "设置",
+            "tab.companion": "伙伴",
 
             // Dashboard
             "dashboard.title": "今日面板",
@@ -211,11 +212,26 @@ enum Localization {
             "health.forward": "稳步推进",
             "health.context": "补充上下文",
             "health.breakdown": "需要拆解",
+
+            // Companion
+            "buddy.settings": "伙伴设置",
+            "buddy.name": "伙伴名字",
+            "buddy.greeting": "进门问候",
+            "buddy.directWrite": "直接读写",
+            "buddy.comingSoon": "即将到来",
+            "buddy.placeholder": "说点什么…",
+            "buddy.noMemory": "（还没说过话）",
+            "buddy.silent": "（我沉默了一下，稍等再聊）",
+            "buddy.send": "发送",
+            "buddy.addedTodo": "已加入待办 ✓",
+            "buddy.completed": "已完成 ✓",
+            "buddy.splitTask": "拆解后已加入待办 ✓",
         ],
         "en": [
             "tab.today": "Today Plan",
             "tab.tasks": "Tasks",
             "tab.settings": "Settings",
+            "tab.companion": "Companion",
 
             "dashboard.title": "Today Panel",
             "dashboard.subtitle": "AI-native Todo",
@@ -403,6 +419,19 @@ enum Localization {
             "health.forward": "Steady progress",
             "health.context": "Add more context",
             "health.breakdown": "Break down further",
+
+            "buddy.settings": "Companion",
+            "buddy.name": "Buddy name",
+            "buddy.greeting": "Greeting on launch",
+            "buddy.directWrite": "Direct read/write",
+            "buddy.comingSoon": "Coming soon",
+            "buddy.placeholder": "Say something...",
+            "buddy.noMemory": "(No conversations yet)",
+            "buddy.silent": "(I went quiet for a moment. Let's talk again soon.)",
+            "buddy.send": "Send",
+            "buddy.addedTodo": "Added to todo ✓",
+            "buddy.completed": "Marked done ✓",
+            "buddy.splitTask": "Split and added to todo ✓",
         ],
     ]
 

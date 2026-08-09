@@ -160,7 +160,21 @@
                 <p data-i18n="assistantDesc">拆解目标、生成今日计划，并保存每个任务的执行上下文。</p>
             </section>
 
-            <label class="input-label" for="ai-provider" data-i18n="aiProviderLabel">AI 服务商</label>
+            <div class="panel-tabs">
+                <button class="panel-tab active" type="button" data-tab="buddy" data-i18n="buddyTab">伙伴</button>
+                <button class="panel-tab" type="button" data-tab="aitools" data-i18n="aiToolsTab">AI 工具</button>
+            </div>
+
+            <div id="buddy-panel">
+                <div id="buddy-messages"></div>
+                <div class="buddy-input-row">
+                    <input type="text" id="buddy-input" autocomplete="off" data-i18n-placeholder="buddyPlaceholder">
+                    <button id="buddy-send" type="button" data-i18n="buddySend">发送</button>
+                </div>
+            </div>
+
+            <div id="aitools-panel" hidden>
+                <label class="input-label" for="ai-provider" data-i18n="aiProviderLabel">AI 服务商</label>
             <select id="ai-provider">
                 <option value="openai">OpenAI</option>
                 <option value="deepseek">DeepSeek</option>
@@ -216,9 +230,13 @@
                 <textarea id="task-prompt" rows="3" data-i18n-placeholder="promptPlaceholder"></textarea>
                 <button id="save-notes" class="ghost-btn" type="button" data-i18n="saveNotes">保存上下文</button>
             </section>
+            </div>
         </aside>
     </main>
 
+    <script type="module" src="companion-context.js"></script>
+    <script type="module" src="companion-events.js"></script>
+    <script type="module" src="companion-actions.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

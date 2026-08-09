@@ -58,6 +58,9 @@ extension Color {
     static let chipSourceText = Color(hex: 0x9A6A1F)
     static let chipSourceBg = Color(hex: 0xFFF4D6)
     static let chipSourceBorder = Color(hex: 0xEFDCB0)
+    static let buddyUserBubble = Color(hex: 0xFDF1EA)
+    static let buddyBuddyBubble = Color(hex: 0xFFFFFF)
+    static let buddyBubbleLine = Color(hex: 0xEFE4DC)
 }
 
 // web .app-shell 背景：渐变 + 白面板

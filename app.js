@@ -42,6 +42,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveNotesBtn = document.getElementById('save-notes');
     const exportObsidianBtn = document.getElementById('export-obsidian');
 
+    const buddyPanel = document.getElementById('buddy-panel');
+    const aitoolsPanel = document.getElementById('aitools-panel');
+    const buddyMessagesEl = document.getElementById('buddy-messages');
+    const buddyInput = document.getElementById('buddy-input');
+    const buddySendBtn = document.getElementById('buddy-send');
+    const panelTabs = document.querySelectorAll('.panel-tab');
+
     const STORAGE_KEYS = {
         TASKS: 'tasks',
         OPENAI_KEY: 'openai_api_key',
@@ -218,7 +225,15 @@ document.addEventListener('DOMContentLoaded', () => {
             contextLabelShort: '上下文',
             acceptanceLabelShort: '验收',
             planSummaryTitle: '今日计划：',
-            emptyTaskPlan: '队列为空。捕捉一个目标。'
+            emptyTaskPlan: '队列为空。捕捉一个目标。',
+            buddyTab: '伙伴',
+            aiToolsTab: 'AI 工具',
+            buddyPlaceholder: '说点什么…',
+            buddySend: '发送',
+            buddySilent: '（我暂时沉默了一下，稍后再聊）',
+            buddyRetry: '重试',
+            buddyEmpty: '还没说过话。先打个招呼吧。',
+            buddyAdded: '已加入待办：{text}'
         },
         en: {
             appTitle: 'AI-native Todo',
@@ -385,7 +400,15 @@ document.addEventListener('DOMContentLoaded', () => {
             contextLabelShort: 'Context',
             acceptanceLabelShort: 'Acceptance',
             planSummaryTitle: 'Today plan:',
-            emptyTaskPlan: 'No active tasks. Capture one goal first.'
+            emptyTaskPlan: 'No active tasks. Capture one goal first.',
+            buddyTab: 'Buddy',
+            aiToolsTab: 'AI Tools',
+            buddyPlaceholder: 'Say something…',
+            buddySend: 'Send',
+            buddySilent: '（I went quiet for a moment — talk again soon）',
+            buddyRetry: 'Retry',
+            buddyEmpty: 'No messages yet. Say hello.',
+            buddyAdded: 'Added to todos: {text}'
         }
     };
     let currentLang = localStorage.getItem(STORAGE_KEYS.LANG) === 'en' ? 'en' : 'zh';
@@ -418,6 +441,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let tasks = loadTasks();
     let aiSuggestedTasks = [];
     let lastBreakdownGoal = '';
+    let buddyHistory = [];
+    let buddyMemory = '';
+    let buddyNudged = [];
     let selectedTaskId = tasks[0]?.id || null;
 
     openaiKeyInput.value = localStorage.getItem(STORAGE_KEYS.OPENAI_KEY) || '';
@@ -964,6 +990,174 @@ document.addEventListener('DOMContentLoaded', () => {
         aiStatus.textContent = message || '';
     }
 
+    // ---------- 伙伴（Buddy） ----------
+    const BUDDY_KEYS = {
+        HISTORY: 'companion_history',
+        MEMORY: 'companion_memory',
+        NUDGED: 'companion_nudged',
+        GREETING: 'companion_greeting',
+        NAME: 'companion_name'
+    };
+
+    function buddyLoad() {
+        try { buddyHistory = JSON.parse(localStorage.getItem(BUDDY_KEYS.HISTORY) || '[]'); } catch { buddyHistory = []; }
+        if (!Array.isArray(buddyHistory)) buddyHistory = [];
+        buddyMemory = localStorage.getItem(BUDDY_KEYS.MEMORY) || '';
+        try { buddyNudged = JSON.parse(localStorage.getItem(BUDDY_KEYS.NUDGED) || '[]'); } catch { buddyNudged = []; }
+        if (!Array.isArray(buddyNudged)) buddyNudged = [];
+    }
+
+    function buddySay(role, content, actions) {
+        buddyHistory.push({ role, content, actions: actions || [] });
+        if (buddyHistory.length > 40) buddyHistory = buddyHistory.slice(-40);
+        localStorage.setItem(BUDDY_KEYS.HISTORY, JSON.stringify(buddyHistory));
+        renderBuddyMessages();
+    }
+
+    function renderBuddyMessages() {
+        if (!buddyMessagesEl) return;
+        buddyMessagesEl.innerHTML = '';
+        if (!buddyHistory.length) {
+            buddyMessagesEl.innerHTML = `<div class="buddy-empty">${t('buddyEmpty')}</div>`;
+            return;
+        }
+        buddyHistory.forEach(msg => {
+            const div = document.createElement('div');
+            div.classList.add('buddy-msg', msg.role === 'user' ? 'user' : 'assistant');
+            div.textContent = msg.content;
+            buddyMessagesEl.appendChild(div);
+            if (msg.role === 'assistant' && msg.actions && msg.actions.length) {
+                const row = document.createElement('div');
+                row.classList.add('buddy-actions');
+                msg.actions.forEach(action => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.classList.add('buddy-action-btn');
+                    btn.textContent = action.label;
+                    btn.addEventListener('click', () => runBuddyAction(action));
+                    row.appendChild(btn);
+                });
+                buddyMessagesEl.appendChild(row);
+            }
+        });
+        buddyMessagesEl.scrollTop = buddyMessagesEl.scrollHeight;
+    }
+
+    function switchPanelTab(tabId) {
+        const showBuddy = tabId === 'buddy';
+        if (buddyPanel) buddyPanel.hidden = !showBuddy;
+        if (aitoolsPanel) aitoolsPanel.hidden = showBuddy;
+        panelTabs.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabId));
+    }
+
+    async function buddySend(userText) {
+        const text = (userText || '').trim();
+        if (!text || typeof callOpenAI !== 'function') return;
+
+        buddySay('user', text);
+        buddyInput.value = '';
+        buddySendBtn.disabled = true;
+
+        const name = localStorage.getItem(BUDDY_KEYS.NAME) || '';
+        const tasksNow = tasks;
+        const ctx = window.buildCompanionContext({
+            memorySummary: buddyMemory,
+            tasks: tasksNow,
+            recentEvents: momentTexts(),
+            history: buddyHistory.slice(-8),
+            lang: currentLang,
+            buddyName: name,
+            health: calculateHealthScore(),
+            doneCount: tasksNow.filter(t => t.completed).length,
+            totalCount: tasksNow.length
+        });
+
+        try {
+            const reply = await callOpenAI(ctx.userPrompt, ctx.systemPrompt);
+            if (!reply) {
+                buddySay('assistant', t('buddySilent'));
+                return;
+            }
+            const parsed = window.parseBuddyActions ? window.parseBuddyActions(reply) : { text: reply, actions: [] };
+            buddySay('assistant', parsed.text || t('buddySilent'), parsed.actions);
+        } catch (error) {
+            buddySay('assistant', t('buddySilent'));
+        } finally {
+            buddySendBtn.disabled = false;
+        }
+    }
+
+    async function buddyGreet() {
+        const today = new Date().toDateString();
+        if (localStorage.getItem(BUDDY_KEYS.GREETING) === today) return;
+        const momentEvents = window.momentsFor ? window.momentsFor({
+            tasks: tasks.map(t => ({ id: t.id, text: t.text, completed: t.completed, createdAt: t.createdAt })),
+            completedToday: tasks.filter(t => t.completed).length,
+            nudgedIds: buddyNudged
+        }) : [];
+        const events = window.buildCompanionContext ? 'greeding' : '';
+        const name = localStorage.getItem(BUDDY_KEYS.NAME) || '';
+        const ctx = window.buildCompanionContext && window.buildCompanionContext({
+            memorySummary: buddyMemory,
+            tasks,
+            recentEvents: momentTexts(tasks),
+            history: [],
+            lang: currentLang,
+            buddyName: name,
+            health: calculateHealthScore(),
+            doneCount: tasks.filter(t => t.completed).length,
+            totalCount: tasks.length
+        });
+        const greetText = window.greeting ? window.greeting(currentLang) : t('buddyEmpty');
+        buddySay('assistant', greetText);
+        if (window.buildCompanionContext) {
+            try {
+                const reply = await callOpenAI(`${ctx.userPrompt}\n请用一句自然的问候开场，不要提\"记忆\"\"上下文\"等词。`, ctx.systemPrompt);
+                if (reply) {
+                    buddyHistory[buddyHistory.length - 1].content = reply;
+                    renderBuddyMessages();
+                }
+            } catch (_error) {
+                /* 保持本地问候 */
+            }
+        }
+        localStorage.setItem(BUDDY_KEYS.GREETING, today);
+    }
+
+        function runBuddyAction(action) {
+        if (!action || !action.action) return;
+        const kind = action.action;
+        if (kind === 'add_task') {
+            const text = (action.payload && (action.payload.text || action.payload.title)) || '';
+            if (!text) return;
+            const task = addTask(text, { sourceGoal: lastBreakdownGoal || '' });
+            if (task) buddySay('assistant', t('buddyAdded', { text }));
+            return;
+        }
+        if (kind === 'complete_task') {
+            const text = (action.payload && (action.payload.text || action.payload.title)) || '';
+            const task = tasks.find(t => t.text === text || t.text.includes(text));
+            if (task) toggleTask(task.id);
+            return;
+        }
+        if (kind === 'breakdown') {
+            const goal = (action.payload && (action.payload.text || action.payload.title || action.payload.goal)) || '';
+            if (goal) {
+                if (goalInput) goalInput.value = goal;
+                handleBreakdown();
+            }
+        }
+    }
+
+    function momentTexts(tasks) {
+        const ms = window.momentsFor ? window.momentsFor({
+            tasks: tasks.map(t => ({ id: t.id, text: t.text, completed: t.completed, createdAt: t.createdAt })),
+            completedToday: tasks.filter(t => t.completed).length,
+            nudgedIds: buddyNudged
+        }) : [];
+        return ms.map(m => m.text);
+    }
+
     function extractOutputText(data) {
         if (typeof data.output_text === 'string' && data.output_text.trim()) {
             return data.output_text.trim();
@@ -1354,6 +1548,25 @@ document.addEventListener('DOMContentLoaded', () => {
     addAiTasksBtn.addEventListener('click', addAiTasksToList);
     saveNotesBtn.addEventListener('click', saveSelectedNotes);
     exportObsidianBtn.addEventListener('click', handleExportObsidian);
+
+    panelTabs.forEach(btn => {
+        btn.addEventListener('click', () => switchPanelTab(btn.dataset.tab));
+    });
+    if (buddySendBtn) {
+        buddySendBtn.addEventListener('click', () => buddySend(buddyInput.value));
+    }
+    if (buddyInput) {
+        buddyInput.addEventListener('keydown', event => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                buddySend(buddyInput.value);
+            }
+        });
+    }
+
+    buddyLoad();
+    renderBuddyMessages();
+    buddyGreet();
     if (langSelect) {
         langSelect.addEventListener('change', () => {
             currentLang = langSelect.value === 'en' ? 'en' : 'zh';
