@@ -96,6 +96,12 @@ enum Localization {
 
             // Settings
             "settings.account": "账号与订阅",
+            "settings.testNotification": "发送测试通知",
+            "settings.testBody": "这是提醒测试通知",
+            "settings.testSent": "已调度，5 秒后应收到",
+            "settings.testDenied": "调度失败：通知权限被拒或系统受限",
+            "settings.testFailed": "通知测试失败",
+            "settings.pendingCount": "%d 条待发提醒",
             "settings.trial": "试用",
             "settings.trialDays": "剩余 %d 天",
             "settings.trialEnded": "已结束",
@@ -340,6 +346,12 @@ enum Localization {
             "card.a11y": "Task %@, type %@, priority %d, %@, estimated %d min",
 
             "settings.account": "Account & Subscription",
+            "settings.testNotification": "Send test notification",
+            "settings.testBody": "This is a reminder test",
+            "settings.testSent": "Scheduled — you should get it in 5 seconds",
+            "settings.testDenied": "Scheduling failed: notifications denied or restricted",
+            "settings.testFailed": "Notification test failed",
+            "settings.pendingCount": "%d pending reminders",
             "settings.trial": "Trial",
             "settings.trialDays": "%d days left",
             "settings.trialEnded": "Ended",

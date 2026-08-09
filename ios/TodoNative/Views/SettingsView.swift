@@ -15,8 +15,15 @@ struct SettingsView: View {
     @State private var showExport = false
     @State private var copied = false
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
+    @State private var pendingCount = 0
+    @State private var showTestResult = false
+    @State private var sentTestOK = false
     @AppStorage("companion_name") private var buddyName = ""
     @AppStorage("companion_greeting_enabled") private var buddyGreeting = true
+
+    private var pendingCountText: String {
+        Localization.t("settings.pendingCount", pendingCount)
+    }
 
     private var noticeText: String {
         switch notificationStatus {
@@ -45,6 +52,30 @@ struct SettingsView: View {
             guard let status else { return }
             DispatchQueue.main.async {
                 notificationStatus = status
+            }
+        }
+        NotificationService.pendingCount { count in
+            DispatchQueue.main.async {
+                pendingCount = count
+            }
+        }
+    }
+
+    // 发送一条 5 秒后的测试通知，验证权限/链路
+    private func sendTestNotification() {
+        let content = UNMutableNotificationContent()
+        content.title = Localization.t("notification.dueTitle")
+        content.body = Localization.t("settings.testBody")
+        content.sound = .default
+        let request = UNNotificationRequest(
+            identifier: "test-notification-\(UUID().uuidString)",
+            content: content,
+            trigger: UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
+        )
+        UNUserNotificationCenter.current().add(request) { error in
+            DispatchQueue.main.async {
+                sentTestOK = error == nil
+                showTestResult = true
             }
         }
     }
@@ -86,6 +117,19 @@ struct SettingsView: View {
                         }
                     }
                     .onAppear { refreshNotificationStatus() }
+
+                    Button {
+                        sendTestNotification()
+                    } label: {
+                        HStack {
+                            Text(Localization.t("settings.testNotification"))
+                                .foregroundStyle(Color.accentBlue)
+                            Spacer()
+                            Text(pendingCountText)
+                                .font(AppTheme.Typography.caption)
+                                .foregroundStyle(Color.appMuted)
+                        }
+                    }
                 }
 
                 Section(Localization.t("settings.account")) {
@@ -199,6 +243,16 @@ struct SettingsView: View {
                             .font(.caption)
                     }
                 }
+            }
+            .alert(
+                Localization.t(sentTestOK ? "settings.testNotification" : "settings.testFailed"),
+                isPresented: $showTestResult
+            ) {
+                Button(Localization.t("common.ok"), role: .cancel) {}
+            } message: {
+                Text(sentTestOK
+                    ? Localization.t("settings.testSent")
+                    : Localization.t("settings.testDenied"))
             }
             .sheet(isPresented: $showExport) {
                 NavigationStack {

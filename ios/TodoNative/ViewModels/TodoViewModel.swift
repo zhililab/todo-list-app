@@ -156,18 +156,20 @@ final class TodoViewModel: ObservableObject {
             }
         }
 
+        // 无显式到期时，尝试从文本推断（今天/明天/后天/X小时后/X点），供本地提醒调度
+        let inferredDue = dueDate ?? DueDateParser.parse(from: text)
         let item = TodoItem(
             title: trimmed,
             taskType: type,
             estimatedMinutes: minutes,
             priority: priority,
             status: .todo,
-            dueDate: dueDate,
+            dueDate: inferredDue,
             sourceGoal: sourceGoal
         )
         modelContext.insert(item)
-        if let dueDate {
-            NotificationService.scheduleDueReminder(taskID: item.id, title: item.title, dueDate: dueDate)
+        if let inferredDue {
+            NotificationService.scheduleDueReminder(taskID: item.id, title: item.title, dueDate: inferredDue)
         }
         save()
     }

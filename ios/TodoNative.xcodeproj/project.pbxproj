@@ -34,6 +34,7 @@
 		6C5C66170950527BFF59B626 /* NotificationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79080EC67B6B4507D2B2813B /* NotificationServiceTests.swift */; };
 		866B9DD607A085AC58CE0E64 /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AFD890AA904320FC0DDD44 /* PaywallView.swift */; };
 		92FB24EFCC34F984C025658D /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0400DC138E614ED295FEF04 /* SettingsView.swift */; };
+		932AA1C8D71E2C06086E8947 /* DueDateParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E5739EDE21FF6440E1FAA4C /* DueDateParser.swift */; };
 		9580C1713DC1CD802C21A539 /* QuotaClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEA5B0DA814065D1C667FCFE /* QuotaClient.swift */; };
 		973FD73B3CDCDE9B14CB11E4 /* TodoViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 061F93A0657716C0C95A4688 /* TodoViewModelTests.swift */; };
 		9AE693CA81908D5EA7034FAE /* TasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BDFDC394F59F54DF03C8EAF /* TasksView.swift */; };
@@ -50,6 +51,7 @@
 		E326B100BF314FCD0147FFB3 /* AIPlanService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8185176F4209CE9F3C757C2 /* AIPlanService.swift */; };
 		E4F88425F7EA31B4B0F65386 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D508C25E638117CA1881BC42 /* Assets.xcassets */; };
 		E71E88FFE6F24E6D03C4ABC1 /* CompanionActionsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62E30E0D30FC501FCE74FBD5 /* CompanionActionsTests.swift */; };
+		E9441368AA3412AF67BE6ADA /* DueDateParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACE9DA0A757856480B4CDA61 /* DueDateParserTests.swift */; };
 		EC9679465BFEFB668FDA73B5 /* TodoItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74117E705A176A10440E111F /* TodoItem.swift */; };
 		EDA3FC800640CF258766ECB2 /* TrialManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB6E07CE986E24DB5DA16A98 /* TrialManagerTests.swift */; };
 /* End PBXBuildFile section */
@@ -82,6 +84,7 @@
 		60D7E634B3AE87AD992507A6 /* CompanionCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionCoreTests.swift; sourceTree = "<group>"; };
 		62E30E0D30FC501FCE74FBD5 /* CompanionActionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionActionsTests.swift; sourceTree = "<group>"; };
 		6B9C745D366DC1FC569D11E2 /* QuotaClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaClientTests.swift; sourceTree = "<group>"; };
+		6E5739EDE21FF6440E1FAA4C /* DueDateParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DueDateParser.swift; sourceTree = "<group>"; };
 		74117E705A176A10440E111F /* TodoItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoItem.swift; sourceTree = "<group>"; };
 		75F008EF1A5DB89ACF93889F /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		79080EC67B6B4507D2B2813B /* NotificationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationServiceTests.swift; sourceTree = "<group>"; };
@@ -92,6 +95,7 @@
 		A41CAD61494D0DBD94D3E5AC /* TaskEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskEditView.swift; sourceTree = "<group>"; };
 		A60AFC32DE6259AF52A879DF /* CompanionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionViewModel.swift; sourceTree = "<group>"; };
 		A8185176F4209CE9F3C757C2 /* AIPlanService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIPlanService.swift; sourceTree = "<group>"; };
+		ACE9DA0A757856480B4CDA61 /* DueDateParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DueDateParserTests.swift; sourceTree = "<group>"; };
 		AEA5B0DA814065D1C667FCFE /* QuotaClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaClient.swift; sourceTree = "<group>"; };
 		B2DFA6154BC64DD850BC158B /* TodoItemTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoItemTests.swift; sourceTree = "<group>"; };
 		B7DB3F075732ADC67A1863C8 /* TodoViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoViewModel.swift; sourceTree = "<group>"; };
@@ -132,6 +136,7 @@
 				60D7E634B3AE87AD992507A6 /* CompanionCoreTests.swift */,
 				2C0145C963A27127FBE09C22 /* CompanionEventsTests.swift */,
 				BC5E0148FE78400FD0C838E1 /* CompanionViewModelTests.swift */,
+				ACE9DA0A757856480B4CDA61 /* DueDateParserTests.swift */,
 				EE3E185821F876A52F113C88 /* LocalizationTests.swift */,
 				79080EC67B6B4507D2B2813B /* NotificationServiceTests.swift */,
 				D3889797B0ECF5BD9FF99F48 /* ObsidianExporterTests.swift */,
@@ -162,6 +167,7 @@
 				BD70507B726C2D79201848A2 /* CompanionCore.swift */,
 				8A8AF3AF37F547B514D78494 /* CompanionEvents.swift */,
 				1CD5612C978625FF38C0A32B /* CompanionVoiceRecorder.swift */,
+				6E5739EDE21FF6440E1FAA4C /* DueDateParser.swift */,
 				EEBED1B62B795BD7F2E8E903 /* NotificationService.swift */,
 				F3721B9A070F3E70E7228302 /* ObsidianExporter.swift */,
 				313A28C5B9204D15E22018BD /* OpenAIService.swift */,
@@ -351,6 +357,7 @@
 				C46227DD7D686C561DEF5126 /* CompanionViewModel.swift in Sources */,
 				A0468A16A066B8312A62D96D /* CompanionVoiceRecorder.swift in Sources */,
 				67EDA3E2A43416AD48A253E6 /* DashboardView.swift in Sources */,
+				932AA1C8D71E2C06086E8947 /* DueDateParser.swift in Sources */,
 				23ED1D4D0D50D60FE80C20BD /* FeatureGateBanner.swift in Sources */,
 				22B4003E3869B0E2E86EC2BB /* LanguageEnvironment.swift in Sources */,
 				1D3279362AC2A51C84E91C01 /* Localization.swift in Sources */,
@@ -383,6 +390,7 @@
 				A2C9F2219C37916E0D6276B4 /* CompanionCoreTests.swift in Sources */,
 				3054652A975FE2B3B14EC3B0 /* CompanionEventsTests.swift in Sources */,
 				B1A6CC1CECC16B4B9DB946F9 /* CompanionViewModelTests.swift in Sources */,
+				E9441368AA3412AF67BE6ADA /* DueDateParserTests.swift in Sources */,
 				1DD58FC7856E76C8B44F63AB /* LocalizationTests.swift in Sources */,
 				6C5C66170950527BFF59B626 /* NotificationServiceTests.swift in Sources */,
 				CD9DC8B7EE8373310DF0A2E2 /* ObsidianExporterTests.swift in Sources */,
