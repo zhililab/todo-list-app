@@ -174,7 +174,13 @@
                 <div id="buddy-messages"></div>
                 <div class="buddy-input-row">
                     <input type="text" id="buddy-input" autocomplete="off" data-i18n-placeholder="buddyPlaceholder">
+                    <button id="buddy-mic" type="button" class="buddy-mic" title="语音输入" aria-label="语音输入">🎤</button>
                     <button id="buddy-send" type="button" data-i18n="buddySend">发送</button>
+                </div>
+                <div id="quota-banner" class="quota-banner" hidden role="button" aria-live="polite">
+                    <span id="quota-banner-text"></span>
+                    <span class="quota-banner-go" data-i18n="quota.goSettings">去 AI 设置</span>
+                    <button type="button" id="quota-banner-close" class="quota-banner-close" aria-label="关闭" data-i18n-aria-label="quota.close" title="关闭">×</button>
                 </div>
             </div>
 
@@ -243,6 +249,7 @@
     <script type="module" src="companion-events.js"></script>
     <script type="module" src="companion-actions.js"></script>
     <script type="module" src="companion-format.js"></script>
+    <script type="module" src="companion-quota.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

@@ -5,13 +5,13 @@ import Foundation
 struct AIService {
 
     // 功能 1：智能拆解（与 web app.js handleBreakdown 保持一致）
-    static func breakdown(goal: String, items: [TodoItem] = []) async -> String {
+    static func breakdown(goal: String, items: [TodoItem] = []) async throws -> String {
         let active = items.filter { !$0.isArchived && !$0.isCompleted }
         let context = active.isEmpty
             ? "当前没有未完成任务"
             : "当前未完成任务：\(active.map { $0.title }.joined(separator: "；"))"
         let prompt = "目标：\(goal)\n\(context)"
-        return await smartText(
+        return try await smartText(
             prompt: prompt,
             instruction: "你是 AI-native todo 的任务规划助手。请给出 5-8 条可执行、可勾选的短任务清单，每行一条，不要额外解释。任务要包含明确动作，避免空泛。语言用中文。",
             fallback: localBreakdown(goal: goal)
@@ -19,7 +19,7 @@ struct AIService {
     }
 
     // 功能 2：复盘/下一步（与 web app.js handleSummary 保持一致）
-    static func summary(items: [TodoItem], health: Int) async -> String {
+    static func summary(items: [TodoItem], health: Int) async throws -> String {
         let active = items.filter { !$0.isArchived && !$0.isCompleted }
         let completed = items.filter { !$0.isArchived && $0.isCompleted }
 
@@ -31,7 +31,7 @@ struct AIService {
             : active.map { "- \($0.title)（\($0.taskType.localizedName)，\(AIPlanService.priorityLabel($0.priority))，\(AIPlanService.effortLabel(minutes: $0.estimatedMinutes))）" }.joined(separator: "\n")
 
         let prompt = "已完成任务:\n\(completedLines)\n\n未完成任务:\n\(activeLines)\n\n健康分: \(health)"
-        return await smartText(
+        return try await smartText(
             prompt: prompt,
             instruction: "你是项目助理。请输出：1）进展概览（2-3句）；2）下一步建议（3条）；3）最适合交给 AI 的下一条 prompt。语言简洁。",
             fallback: localSummary(items: items, health: health)
@@ -39,24 +39,31 @@ struct AIService {
     }
 
     // 功能 3：今日计划（与 web app.js handleTodayPlan 保持一致）
-    static func todayPlan(items: [TodoItem]) async -> String {
+    static func todayPlan(items: [TodoItem]) async throws -> String {
         let active = items.filter { !$0.isArchived && !$0.isCompleted }
         let list = active.isEmpty
             ? "- 暂无"
             : active.map { "- \($0.title)（\($0.taskType.localizedName)，\(AIPlanService.priorityLabel($0.priority))，\(AIPlanService.effortLabel(minutes: $0.estimatedMinutes))）" }.joined(separator: "\n")
         let prompt = "请基于这些任务生成今天的执行计划：\n\(list)"
-        return await smartText(
+        return try await smartText(
             prompt: prompt,
             instruction: "你是今日计划助手。请只保留最关键的 3-5 件事，按上午/下午/收尾组织，最后给出第一步。中文输出。",
             fallback: AIPlanService().generateTodayPlanText(from: items)
         )
     }
 
-    // 与 web app.js getSmartText 保持一致：有 AI 结果用它，否则本地降级
-    private static func smartText(prompt: String, instruction: String, fallback: String) async -> String {
-        if let text = try? await OpenAIService.callOpenAI(promptText: prompt, instructionText: instruction),
-           !text.isEmpty {
-            return text
+    // 与 web app.js getSmartText 保持一致：有 AI 结果用它，否则本地降级；
+    // 额度耗尽（QuotaError）向上抛，让调用方提示用户订阅或填 Key。
+    private static func smartText(prompt: String, instruction: String, fallback: String) async throws -> String {
+        do {
+            if let text = try await OpenAIService.callOpenAI(promptText: prompt, instructionText: instruction),
+               !text.isEmpty {
+                return text
+            }
+        } catch let error as QuotaError {
+            throw error
+        } catch {
+            // 其余失败（无 Key、网络、服务商错误等）走本地降级
         }
         return fallback
     }

@@ -705,28 +705,106 @@ button {
     padding: 26px 0;
 }
 
+/* ---------- iMessage 风格气泡动效 ---------- */
+
+/* 新消息弹入动画：缩放 + 上移 6px → 归位，spring 缓动 */
+@keyframes bubble-in {
+    from { opacity: 0; transform: scale(.9) translateY(6px); }
+    to { opacity: 1; transform: none; }
+}
+
 .buddy-msg {
-    max-width: 92%;
-    border-radius: 14px;
+    position: relative;
+    max-width: 80%;
+    border-radius: 16px;
     padding: 10px 12px;
     font-size: 14px;
     line-height: 1.5;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+    animation: bubble-in 0.28s cubic-bezier(.34, 1.56, .64, 1);
 }
 
+/* 底部时间戳：小额字体 */
+.buddy-msg time {
+    display: block;
+    margin-top: 3px;
+    font-size: 10px;
+    opacity: .55;
+}
+
+/* 伙伴消息：左对齐、白/浅灰底、灰字，左下大圆角 + 左上小尾巴 */
 .buddy-msg.assistant {
     justify-self: start;
-    background: var(--accent-soft);
-    color: #4a3326;
-    border-bottom-left-radius: 4px;
+    background: linear-gradient(160deg, #ffffff 0%, #f4f0ec 100%);
+    color: #4f4a45;
+    border-radius: 18px 18px 18px 6px;
 }
 
+.buddy-msg.assistant::after {
+    content: '';
+    position: absolute;
+    top: 14px;
+    left: -8px;
+    width: 0;
+    height: 0;
+    border-top: 7px solid transparent;
+    border-right: 9px solid #f4f0ec;
+    border-bottom: 7px solid transparent;
+}
+
+/* 用户消息：右对齐、用户蓝渐变、白字，右上小尾巴 */
 .buddy-msg.user {
     justify-self: end;
-    background: #eef4ff;
-    color: #2c3e58;
-    border-bottom-right-radius: 4px;
+    background: linear-gradient(150deg, #7ea6ff 0%, #5b8def 100%);
+    color: #fff;
+    border-radius: 18px 6px 18px 18px;
+}
+
+.buddy-msg.user::after {
+    content: '';
+    position: absolute;
+    top: 14px;
+    right: -8px;
+    width: 0;
+    height: 0;
+    border-top: 7px solid transparent;
+    border-left: 9px solid #6b9cf5;
+    border-bottom: 7px solid transparent;
+}
+
+.buddy-msg.no-anim {
+    animation: none;
+}
+
+/* 打字指示器：三个跳跳圆点 */
+.typing {
+    justify-self: start;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: linear-gradient(160deg, #ffffff, #f4f0ec);
+    border: 1px solid #efe4dc;
+    border-radius: 18px;
+    padding: 10px 14px;
+    animation: bubble-in 0.18s cubic-bezier(.34, 1.56, .64, 1);
+}
+
+.typing .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    opacity: .45;
+    animation: typing-bounce .9s ease-in-out infinite;
+}
+
+.typing .dot:nth-child(2) { animation-delay: .15s; }
+.typing .dot:nth-child(3) { animation-delay: .3s; }
+
+@keyframes typing-bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: .45; }
+    30% { transform: translateY(-4px); opacity: 1; }
 }
 
 .buddy-actions {
@@ -760,6 +838,86 @@ button {
     color: #36312e;
     border-radius: 10px;
     padding: 11px 12px;
+}
+
+/* 语音输入按钮（🎤），不支持语音时隐藏 */
+.buddy-mic {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    border: 1px solid #eaded7;
+    background: #fff;
+    color: var(--text);
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color .2s ease, color .2s ease, transform .15s ease;
+}
+
+.buddy-mic:hover {
+    transform: translateY(-1px);
+}
+
+.buddy-mic[hidden] {
+    display: none;
+}
+
+/* 录制中：红底 + 呼吸光圈 */
+.buddy-mic.recording {
+    background: #ff3b30;
+    color: #fff;
+    border-color: transparent;
+    animation: mic-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes mic-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, .35); }
+    50% { box-shadow: 0 0 0 6px rgba(255, 59, 48, 0); }
+}
+
+/* 额度提示彩条：显示在输入框下方，点击跳到 AI 设置 */
+.quota-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(100deg, #fff4e0 0%, #ffecec 100%);
+    border: 1px solid #ffcf9c;
+    color: #8a4a12;
+    border-radius: 12px;
+    padding: 9px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    user-select: none;
+    animation: bubble-in .28s cubic-bezier(.34, 1.56, .64, 1);
+}
+
+.quota-banner[hidden] {
+    display: none;
+}
+
+.quota-banner .quota-banner-go {
+    margin-left: auto;
+    white-space: nowrap;
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.quota-banner .quota-banner-close {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-size: 15px;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.quota-banner .quota-banner-close:hover {
+    background: rgba(0, 0, 0, .08);
 }
 
 #buddy-send {
@@ -977,16 +1135,6 @@ input:disabled {
     50% { opacity: 0.75; }
 }
 
-@keyframes msg-in-left {
-    from { opacity: 0; transform: translateX(-6px); }
-    to { opacity: 1; transform: none; }
-}
-
-@keyframes msg-in-right {
-    from { opacity: 0; transform: translateX(6px); }
-    to { opacity: 1; transform: none; }
-}
-
 @keyframes panel-fade {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -1107,11 +1255,11 @@ select {
 }
 
 .buddy-msg.assistant {
-    animation: msg-in-left 0.2s ease-out;
+    animation: bubble-in 0.28s cubic-bezier(.34, 1.56, .64, 1);
 }
 
 .buddy-msg.user {
-    animation: msg-in-right 0.2s ease-out;
+    animation: bubble-in 0.28s cubic-bezier(.34, 1.56, .64, 1);
 }
 
 .buddy-msg.no-anim {

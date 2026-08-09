@@ -23,7 +23,8 @@ An AI-native bilingual todo app with task types, context fields, acceptance crit
 - **截止时间**：支持日期 + 精确到分钟的时间（`YYYY-MM-DD HH:mm`），到期判断、逾期高亮均为分钟级
 - **健康度仪表盘**：完成率进度条 + 统计卡；健康分算法（完成度 45 + 上下文完备度 35 + 活跃负荷 20 − 高优先级积压罚分）；今日 Top 5 视图 + 下一步建议
 - **AI 工作台**：8 家 OpenAI 兼容服务商（OpenAI/DeepSeek/Moonshot/Zhipu GLM/Qwen/Groq/SiliconFlow/Custom + 自定义）；智能拆解目标为 5-8 条可勾选任务并可一键导入、AI 复盘与下一步、AI 今日计划、任务行「拆小」；全部能力无 API Key 时自动本地降级
-- **Companion（AI 温柔知己）**：对话聊天（人格设定 + 上下文打包 + 最近 40 条历史 + 记忆压缩）；关键时刻引擎（完成庆祝每日去重 + 逾期 3 天轻推）；建议动作流（严格 JSON 契约，白名单 `add_task/complete_task/breakdown`，写操作需用户点击确认）；无 AI 回复时从用户消息本地提取任务意图兜底；每日问候（带 Key 时后台换用 LLM 生成）
+- **AI 路由（三层）**：有自定义 API Key → 直连服务商；无 Key 但配置托管代理 → 走 App 托管额度（`deepseek-chat`，`X-Device-Id` 匿名计数）；两者都没有 → 本地降级
+- **Companion（AI 温柔知己）**：对话聊天（人格设定 + 上下文打包 + 最近 40 条历史 + 记忆压缩）；关键时刻引擎（完成庆祝每日去重 + 逾期 3 天轻推）；建议动作流（严格 JSON 契约，白名单 `add_task/complete_task/breakdown`，写操作需用户点击确认）；无 AI 回复时从用户消息本地提取任务意图兜底；每日问候（带 Key 时后台换用 LLM 生成）；语音输入（Web Speech API，zh-CN/en-US 实时转写）；iMessage 风格气泡（双行时间戳、深浅区分、打字指示器）
 - **Obsidian 导出**：一键导出带 YAML frontmatter 的 Markdown 文件（含今日计划与任务上下文字段）
 - **到期通知**：分钟级到期判断，到点发系统通知；60 秒轮询 + 去重标记，完成任务或改期自动清除标记
 - **微交互**：统计数字 pop、完成任务高亮闪烁、删除任务淡出、逾期任务呼吸提醒、伙伴消息滑入、进度条 shimmer，全部支持 `prefers-reduced-motion`
@@ -34,13 +35,13 @@ An AI-native bilingual todo app with task types, context fields, acceptance crit
 与 Web 端为「逻辑镜像」移植（各模块注释标注与 web 逻辑一致），数据完全独立（SwiftData + UserDefaults），无后端、无跨端同步。
 
 - **布局**：4-Tab 导航（今日计划 / 任务 / 伙伴 / 设置）；任务模型含上下文/验收标准/下一步 Prompt/来源目标；表单新增 + 自然语言捕捉（对齐 web 元数据推断）；编辑（TaskEditView）、删除/归档、清除已完成；状态筛选 + 优先级排序
-- **AI 工作台**：智能拆解 / 复盘 / 今日计划，无 Key 自动本地降级；8 家兼容服务商注册表，兼容 `chat/completions` 与 `responses` 两种响应格式
-- **Companion**：聊天 Tab（上下文打包 + 记忆压缩 + 历史 40 条）；关键时刻引擎（完成庆祝每日去重 / 逾期轻推）；建议动作流（白名单 + 批量入库）；每日问候可开关
+- **AI 工作台**：智能拆解 / 复盘 / 今日计划，无 Key 自动本地降级；8 家兼容服务商注册表，兼容 `chat/completions` 与 `responses` 两种响应格式；无 Key 且配置托管代理时走 App 托管额度（`QuotaClient`，402 映射本地化提示）
+- **Companion**：聊天 Tab（上下文打包 + 记忆压缩 + 历史 40 条）；关键时刻引擎（完成庆祝每日去重 / 逾期轻推）；建议动作流（白名单 + 批量入库）；每日问候可开关；语音输入（`SFSpeechRecognizer` + `AVAudioEngine`，zh-CN/en-US，双权限校验）；iMessage 风格气泡（`BubbleTailShape` + 打字指示器）
 - **通知**：截止日期精确到分钟（DatePicker 日期 + 时分），按用户选择时刻触发并用 `UNTimeIntervalNotificationTrigger` 调度；过期任务补发间隔最小 60s；完成任务自动取消提醒；设置页展示授权状态
 - **商业化**：7 天试用（过期自动降级）+ StoreKit 2 月/年订阅 + 恢复购买 + 交易监听；功能门控（AI 今日计划/高级 Obsidian 导出/任务模板/分析看板/主题包）；付费入口在设置页，试用结束后启动弹出自弹窗
 - **Obsidian 导出**：生成每日 Markdown，支持系统分享面板 + 复制剪贴板（付费功能）
 - **体验**：动画全套尊重 `accessibilityReduceMotion`（完成打勾弹跳 + 闪光覆盖、按钮按压反馈、列表插入移除过渡、统计数字 pop、气泡滑入）；iPad 宽屏双栏；中英双语
-- **质量**：84 个单元测试（12 个测试文件，覆盖模型 / 任务 VM / AI 计划 / Obsidian 导出 / 试用 / Companion / 通知 / 本地化），iOS 27 模拟器构建 + 启动冒烟通过
+- **质量**：93 个单元测试（13 个测试文件，覆盖模型 / 任务 VM / AI 计划 / Obsidian 导出 / 试用 / Companion / 通知 / 配额客户端 / 本地化），iOS 27 模拟器构建 + 启动冒烟通过
 
 ## 文件结构
 
@@ -53,13 +54,15 @@ An AI-native bilingual todo app with task types, context fields, acceptance crit
 ├── companion-context.js  # Companion 上下文 / 记忆打包
 ├── companion-events.js   # 关键时刻引擎（庆祝 / 轻推）
 ├── companion-format.js   # 日期解析 / 逾期 / 通知判断
-├── companion-*.test.js   # 对应模块单元测试（node --test）
+├── companion-quota.js    # AI 配额客户端（直连 / 代理路由决策）
+├── companion-*.test.js   # 对应模块单元测试（node --test，76 个）
 ├── public/               # PWA 资源（favicon、site.webmanifest）
 ├── docs/                 # 设计文档与实现计划
 ├── scripts/              # 构建 / iOS 预览脚本
+├── workers/quota-proxy/  # AI 配额代理 Worker（free/pro 限额，Cloudflare KV）
 └── ios/                  # iOS 端（SwiftUI + SwiftData）
     ├── TodoNative/       # App 源码（Models / ViewModels / Views / Services）
-    ├── TodoNativeTests/  # 84 个单元测试
+    ├── TodoNativeTests/  # 93 个单元测试
     ├── Project.yml       # XcodeGen 源码配置
     └── README.md         # iOS 规划与落地说明
 ```
@@ -93,6 +96,7 @@ iOS 运行方式见 `ios/README.md`（`xcodegen generate` + Xcode 运行，或 `
 
 ## 更新日志
 
+- 2026-08-09：新增 AI 配额系统（`workers/quota-proxy`：免费 10 条 / Pro 每日 20 条，KV 计数，`X-Device-Id` 匿名）；Web + iOS 双端接入 QuotaClient，Companion 新增语音输入（Web Speech / SFSpeechRecognizer）与 iMessage 风格气泡。
 - 2026-08-08：支持精确到分钟的截止时间与到期提醒（Web + iOS 双端）；Companion 新增本地任务意图兜底；新增微交互与动画（双端，尊重系统减弱动态设置）。
 - 2026-08-08：README 功能特性汇总更新（Web / iOS 双端），同步 iOS 测试用例数（84 个，12 个测试文件）。
 - 2026-08-08：已补充网站 favicon 配置（Tab icon）并上线到 https://todo-list-app.zhili1993.chatgpt.site。
@@ -102,6 +106,7 @@ iOS 运行方式见 `ios/README.md`（`xcodegen generate` + Xcode 运行，或 `
 
 - 本地语言偏好与 API Key 会持久化到 `localStorage`
 - `.env` 不需要配置（纯前端，API Key 在浏览器输入框中保存到本地）
+- AI 托管额度代理（可选）：`workers/quota-proxy/` 部署后（KV namespace + `DEEPSEEK_API_KEY` secret），在 `localStorage.quota_base_url` 填入 Worker 地址即可启用；无 Key 用户自动走免费/Pro 配额（详见 `workers/quota-proxy/README.md`）
 
 ## 运行说明（English）
 

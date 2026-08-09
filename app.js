@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const buddyMessagesEl = document.getElementById('buddy-messages');
     const buddyInput = document.getElementById('buddy-input');
     const buddySendBtn = document.getElementById('buddy-send');
+    const buddyMic = document.getElementById('buddy-mic');
     const panelTabs = document.querySelectorAll('.panel-tab');
     const notifToggleBtn = document.getElementById('notif-toggle');
 
@@ -61,6 +62,42 @@ document.addEventListener('DOMContentLoaded', () => {
         AI_MODEL: 'ai_model'
     };
     const langSelect = document.getElementById('lang-select');
+
+    // ---------- 额度客户端（QuotaProxy） ----------
+    // 设备匿名 ID：localStorage 无 id 时用 crypto.randomUUID() 生成并保存
+    function quotaDeviceId() {
+        return typeof window.getDeviceId === 'function'
+            ? window.getDeviceId(localStorage)
+            : (localStorage.getItem('todo_device_id') || createId());
+    }
+
+    // 代理请求对象：baseUrl 为空 = 未启用托管额度
+    const QuotaProxy = {
+        baseUrl() {
+            return localStorage.getItem('quota_base_url') || '';
+        },
+        configure(base) {
+            const value = String(base || '').trim();
+            if (value) localStorage.setItem('quota_base_url', value);
+            else localStorage.removeItem('quota_base_url');
+            return value;
+        },
+        deviceId() {
+            return quotaDeviceId();
+        },
+        request(body) {
+            const base = this.baseUrl();
+            if (typeof window.proxyRequest === 'function') {
+                return window.proxyRequest({ baseUrl: base, deviceId: this.deviceId(), body });
+            }
+            throw new Error(t('quota.exceeded'));
+        },
+        async quota() {
+            const snapshot = await window.fetchQuota({ baseUrl: this.baseUrl(), deviceId: this.deviceId() });
+            return snapshot;
+        }
+    };
+    window.QuotaProxy = QuotaProxy;
 
     const I18N = {
         zh: {
@@ -239,6 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
             buddyAdded: '已加入待办：{text}',
             buddyAddTaskBtn: '加入待办',
             buddyNoKey: '还没配 API Key。到 AI 设置里填一个，我就能陪你聊了。',
+            buddyTyping: '伙伴正在输入…',
             taskDueLabel: '截止',
             taskDueTimeLabel: '时间',
             editBtn: '编辑',
@@ -250,7 +288,17 @@ document.addEventListener('DOMContentLoaded', () => {
             notifEnabled: '到期提醒已开启',
             notifDenied: '通知被浏览器禁用，点此查看',
             notifDeniedMsg: '通知权限已被浏览器拒绝，是否重新尝试请求？',
-            notifUnavailable: '当前环境不支持通知'
+            notifUnavailable: '当前环境不支持通知',
+            quota: {
+                freeLimit: '免费额度：{used}/{limit}',
+                exceeded: 'AI 额度已用完',
+                exceededFree: '免费额度已用完：订阅 Pro 或填自己的 API Key',
+                exceededDaily: '今日额度已用完，明天恢复',
+                proxyHint: '正在使用 App 托管额度（deepseek-chat）',
+                signIn: '登录',
+                goSettings: '去 AI 设置',
+                close: '关闭'
+            }
         },
         en: {
             appTitle: 'AI-native Todo',
@@ -428,6 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
             buddyAdded: 'Added to todos: {text}',
             buddyAddTaskBtn: 'Add to todos',
             buddyNoKey: 'No API key yet. Add one in AI settings and I\'ll be here.',
+            buddyTyping: 'Buddy is typing…',
             taskDueLabel: 'Due',
             taskDueTimeLabel: 'Time',
             editBtn: 'Edit',
@@ -439,7 +488,17 @@ document.addEventListener('DOMContentLoaded', () => {
             notifEnabled: 'Due reminders on',
             notifDenied: 'Notifications blocked — click for details',
             notifDeniedMsg: 'Notification permission is blocked by the browser. Try requesting again?',
-            notifUnavailable: 'Notifications not supported here'
+            notifUnavailable: 'Notifications not supported here',
+            quota: {
+                freeLimit: 'Free quota: {used}/{limit}',
+                exceeded: 'AI quota used up',
+                exceededFree: 'Free quota used up: subscribe to Pro or add your own API Key',
+                exceededDaily: 'Daily quota used up, back again tomorrow',
+                proxyHint: 'Using app-managed quota (deepseek-chat)',
+                signIn: 'Sign in',
+                goSettings: 'Open AI settings',
+                close: 'Close'
+            }
         }
     };
     let currentLang = localStorage.getItem(STORAGE_KEYS.LANG) === 'en' ? 'en' : 'zh';
@@ -1102,7 +1161,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function buddySay(role, content, actions) {
-        buddyHistory.push({ role, content, actions: actions || [] });
+        buddyHistory.push({ role, content, ts: Date.now(), actions: actions || [] });
         if (buddyHistory.length > 40) buddyHistory = buddyHistory.slice(-40);
         localStorage.setItem(BUDDY_KEYS.HISTORY, JSON.stringify(buddyHistory));
         renderBuddyMessages();
@@ -1119,7 +1178,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const div = document.createElement('div');
             div.classList.add('buddy-msg', msg.role === 'user' ? 'user' : 'assistant');
             if (index < buddyHistory.length - 1) div.classList.add('no-anim');
-            div.textContent = msg.content;
+            const textNode = document.createElement('span');
+            textNode.classList.add('msg-text');
+            textNode.textContent = msg.content;
+            div.appendChild(textNode);
+            if (msg.ts) {
+                const timeEl = document.createElement('time');
+                timeEl.textContent = new Date(msg.ts).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
+                div.appendChild(timeEl);
+            }
             buddyMessagesEl.appendChild(div);
             if (msg.role === 'assistant' && msg.actions && msg.actions.length) {
                 const row = document.createElement('div');
@@ -1151,6 +1218,46 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function showTypingIndicator() {
+        if (!buddyMessagesEl) return;
+        const typing = document.createElement('div');
+        typing.className = 'typing';
+        typing.setAttribute('role', 'status');
+        typing.setAttribute('aria-label', t('buddyTyping'));
+        for (let i = 0; i < 3; i++) {
+            const dot = document.createElement('span');
+            dot.className = 'dot';
+            typing.appendChild(dot);
+        }
+        buddyMessagesEl.appendChild(typing);
+        buddyMessagesEl.scrollTop = buddyMessagesEl.scrollHeight;
+    }
+
+    function removeTypingIndicator() {
+        if (!buddyMessagesEl) return;
+        buddyMessagesEl.querySelectorAll('.typing').forEach(el => el.remove());
+    }
+
+    function showQuotaBanner(message) {
+        const banner = document.getElementById('quota-banner');
+        const bannerText = document.getElementById('quota-banner-text');
+        if (!banner) return;
+        if (bannerText) bannerText.textContent = message;
+        banner.hidden = false;
+    }
+
+    function hideQuotaBanner() {
+        const banner = document.getElementById('quota-banner');
+        if (banner) banner.hidden = true;
+    }
+
+    // 路由决策：有自定义 Key → 直连；否则有代理地址 → 走托管额度；再否则本地
+    function buddyRoute(hasCustomKey) {
+        return typeof window.decideRoute === 'function'
+            ? window.decideRoute(hasCustomKey, QuotaProxy.baseUrl())
+            : (hasCustomKey ? 'direct' : (QuotaProxy.baseUrl() ? 'proxy' : 'local'));
+    }
+
     async function buddySend(userText) {
         const text = (userText || '').trim();
         if (!text || typeof callOpenAI !== 'function') return;
@@ -1158,6 +1265,8 @@ document.addEventListener('DOMContentLoaded', () => {
         buddySay('user', text);
         buddyInput.value = '';
         buddySendBtn.disabled = true;
+        hideQuotaBanner();
+        showTypingIndicator();
 
         try {
             const name = localStorage.getItem(BUDDY_KEYS.NAME) || '';
@@ -1176,7 +1285,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
                 : { userPrompt: `用户: ${text}`, systemPrompt: '' };
 
-            const reply = await callOpenAI(ctx.userPrompt, ctx.systemPrompt);
+            const route = buddyRoute(Boolean(openaiKeyInput.value.trim()));
+            let reply;
+            if (route === 'proxy') {
+                // 走 app 托管额度：模型固定 deepseek-chat
+                setAiStatus(t('quota.proxyHint'));
+                const data = await QuotaProxy.request({
+                    model: 'deepseek-chat',
+                    messages: [
+                        { role: 'system', content: ctx.systemPrompt },
+                        { role: 'user', content: ctx.userPrompt }
+                    ]
+                });
+                reply = extractOutputText(data);
+            } else {
+                reply = await callOpenAI(ctx.userPrompt, ctx.systemPrompt);
+            }
             if (!reply) {
                 buddySay('assistant', t('buddyNoKey'));
                 return;
@@ -1191,9 +1315,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             buddySay('assistant', parsed.text || t('buddySilent'), actions);
         } catch (error) {
+            if (error && error.code === 'quota_exceeded') {
+                // 额度超限 → 状态提示 + 输入框下方彩条（点击跳到 AI 设置）
+                setAiStatus(t('quota.exceeded'));
+                showQuotaBanner(error.kind === 'daily'
+                    ? t('quota.exceededDaily')
+                    : t('quota.exceededFree'));
+                return;
+            }
             buddySay('assistant', t('buddySilent'));
         } finally {
             buddySendBtn.disabled = false;
+            removeTypingIndicator();
         }
     }
 
@@ -1779,6 +1912,77 @@ document.addEventListener('DOMContentLoaded', () => {
                 event.preventDefault();
                 buddySend(buddyInput.value);
             }
+        });
+    }
+
+    // ---------- 伙伴语音输入（SpeechRecognition） ----------
+    const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let buddyRecording = false;
+    let buddyRecognition = null;
+
+    function resetBuddyMic() {
+        buddyRecording = false;
+        buddyRecognition = null;
+        if (buddyMic) {
+            buddyMic.classList.remove('recording');
+            buddyMic.textContent = '🎤';
+        }
+    }
+
+    if (buddyMic && SpeechRecognitionCtor) {
+        buddyMic.addEventListener('click', () => {
+            if (buddyRecording) {
+                try {
+                    if (buddyRecognition) buddyRecognition.stop();
+                } catch (_error) {
+                    resetBuddyMic();
+                }
+                return;
+            }
+            try {
+                const recognition = new SpeechRecognitionCtor();
+                recognition.lang = currentLang === 'en' ? 'en-US' : 'zh-CN';
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                let voiceFinal = '';
+                buddyRecognition = recognition;
+                buddyRecording = true;
+                buddyMic.classList.add('recording');
+                buddyMic.textContent = '⏺';
+
+                recognition.onresult = event => {
+                    let interim = '';
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const result = event.results[i];
+                        if (result.isFinal) voiceFinal += result[0].transcript;
+                        else interim += result[0].transcript;
+                    }
+                    voiceFinal = voiceFinal.trim();
+                    // interim 实时填入输入框，final 追加保留
+                    buddyInput.value = (voiceFinal ? `${voiceFinal} ` : '') + interim;
+                };
+                recognition.onend = resetBuddyMic;
+                recognition.onerror = resetBuddyMic;
+                recognition.start();
+            } catch (_error) {
+                resetBuddyMic();
+            }
+        });
+    } else if (buddyMic) {
+        // 浏览器不支持语音识别 → 隐藏 mic 按钮
+        buddyMic.hidden = true;
+    }
+
+    // 额度彩条：点击跳到 AI 设置面板；× 关闭
+    const quotaBanner = document.getElementById('quota-banner');
+    if (quotaBanner) {
+        quotaBanner.addEventListener('click', () => switchPanelTab('aitools'));
+    }
+    const quotaBannerClose = document.getElementById('quota-banner-close');
+    if (quotaBannerClose) {
+        quotaBannerClose.addEventListener('click', event => {
+            event.stopPropagation();
+            hideQuotaBanner();
         });
     }
 

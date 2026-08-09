@@ -1,0 +1,9 @@
+{
+  "name": "todo-quota-proxy",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "test": "node test.mjs"
+  }
+}

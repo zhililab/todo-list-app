@@ -23,6 +23,7 @@
 		2C74144D7CE36AE17E0748F7 /* CompanionActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5421929270953694E5EFC56 /* CompanionActions.swift */; };
 		3054652A975FE2B3B14EC3B0 /* CompanionEventsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C0145C963A27127FBE09C22 /* CompanionEventsTests.swift */; };
 		30785170ED4342D68DF58104 /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53A5126977885EF5A5708DA1 /* AIService.swift */; };
+		30D1AB9AD256E87A46C72086 /* QuotaClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B9C745D366DC1FC569D11E2 /* QuotaClientTests.swift */; };
 		36477C65139FA6755BFD6D68 /* CompanionCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD70507B726C2D79201848A2 /* CompanionCore.swift */; };
 		39B23F08FB1A0D15A5B28FE1 /* TodoViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7DB3F075732ADC67A1863C8 /* TodoViewModel.swift */; };
 		443DFD5E148CEBFDE6D97DB4 /* ObsidianExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3721B9A070F3E70E7228302 /* ObsidianExporter.swift */; };
@@ -33,8 +34,10 @@
 		6C5C66170950527BFF59B626 /* NotificationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79080EC67B6B4507D2B2813B /* NotificationServiceTests.swift */; };
 		866B9DD607A085AC58CE0E64 /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AFD890AA904320FC0DDD44 /* PaywallView.swift */; };
 		92FB24EFCC34F984C025658D /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0400DC138E614ED295FEF04 /* SettingsView.swift */; };
+		9580C1713DC1CD802C21A539 /* QuotaClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEA5B0DA814065D1C667FCFE /* QuotaClient.swift */; };
 		973FD73B3CDCDE9B14CB11E4 /* TodoViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 061F93A0657716C0C95A4688 /* TodoViewModelTests.swift */; };
 		9AE693CA81908D5EA7034FAE /* TasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BDFDC394F59F54DF03C8EAF /* TasksView.swift */; };
+		A0468A16A066B8312A62D96D /* CompanionVoiceRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CD5612C978625FF38C0A32B /* CompanionVoiceRecorder.swift */; };
 		A25F45476E4CC08E665E1286 /* TrialManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47FF35322FD2C6CD059340BB /* TrialManager.swift */; };
 		A2C9F2219C37916E0D6276B4 /* CompanionCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60D7E634B3AE87AD992507A6 /* CompanionCoreTests.swift */; };
 		B12866956C2F766FC17DA80F /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75F008EF1A5DB89ACF93889F /* MainTabView.swift */; };
@@ -66,6 +69,7 @@
 		074033B7DBD154B9EA8BF04C /* PurchaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseManager.swift; sourceTree = "<group>"; };
 		09F83C4BEA09B0EBD61E42B7 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		0D447E4FB1739A17DE2E2619 /* AIWorkbenchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIWorkbenchView.swift; sourceTree = "<group>"; };
+		1CD5612C978625FF38C0A32B /* CompanionVoiceRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionVoiceRecorder.swift; sourceTree = "<group>"; };
 		1D35EC4B8B50A0245829F8E2 /* CompanionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionView.swift; sourceTree = "<group>"; };
 		2C0145C963A27127FBE09C22 /* CompanionEventsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionEventsTests.swift; sourceTree = "<group>"; };
 		2C182B06FE7B29314BAB19A6 /* OpenAIServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIServiceTests.swift; sourceTree = "<group>"; };
@@ -77,6 +81,7 @@
 		53A5126977885EF5A5708DA1 /* AIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIService.swift; sourceTree = "<group>"; };
 		60D7E634B3AE87AD992507A6 /* CompanionCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionCoreTests.swift; sourceTree = "<group>"; };
 		62E30E0D30FC501FCE74FBD5 /* CompanionActionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionActionsTests.swift; sourceTree = "<group>"; };
+		6B9C745D366DC1FC569D11E2 /* QuotaClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaClientTests.swift; sourceTree = "<group>"; };
 		74117E705A176A10440E111F /* TodoItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoItem.swift; sourceTree = "<group>"; };
 		75F008EF1A5DB89ACF93889F /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		79080EC67B6B4507D2B2813B /* NotificationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationServiceTests.swift; sourceTree = "<group>"; };
@@ -87,6 +92,7 @@
 		A41CAD61494D0DBD94D3E5AC /* TaskEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskEditView.swift; sourceTree = "<group>"; };
 		A60AFC32DE6259AF52A879DF /* CompanionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionViewModel.swift; sourceTree = "<group>"; };
 		A8185176F4209CE9F3C757C2 /* AIPlanService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIPlanService.swift; sourceTree = "<group>"; };
+		AEA5B0DA814065D1C667FCFE /* QuotaClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaClient.swift; sourceTree = "<group>"; };
 		B2DFA6154BC64DD850BC158B /* TodoItemTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoItemTests.swift; sourceTree = "<group>"; };
 		B7DB3F075732ADC67A1863C8 /* TodoViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoViewModel.swift; sourceTree = "<group>"; };
 		BB6E07CE986E24DB5DA16A98 /* TrialManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrialManagerTests.swift; sourceTree = "<group>"; };
@@ -130,6 +136,7 @@
 				79080EC67B6B4507D2B2813B /* NotificationServiceTests.swift */,
 				D3889797B0ECF5BD9FF99F48 /* ObsidianExporterTests.swift */,
 				2C182B06FE7B29314BAB19A6 /* OpenAIServiceTests.swift */,
+				6B9C745D366DC1FC569D11E2 /* QuotaClientTests.swift */,
 				B2DFA6154BC64DD850BC158B /* TodoItemTests.swift */,
 				061F93A0657716C0C95A4688 /* TodoViewModelTests.swift */,
 				BB6E07CE986E24DB5DA16A98 /* TrialManagerTests.swift */,
@@ -154,10 +161,12 @@
 				C5421929270953694E5EFC56 /* CompanionActions.swift */,
 				BD70507B726C2D79201848A2 /* CompanionCore.swift */,
 				8A8AF3AF37F547B514D78494 /* CompanionEvents.swift */,
+				1CD5612C978625FF38C0A32B /* CompanionVoiceRecorder.swift */,
 				EEBED1B62B795BD7F2E8E903 /* NotificationService.swift */,
 				F3721B9A070F3E70E7228302 /* ObsidianExporter.swift */,
 				313A28C5B9204D15E22018BD /* OpenAIService.swift */,
 				074033B7DBD154B9EA8BF04C /* PurchaseManager.swift */,
+				AEA5B0DA814065D1C667FCFE /* QuotaClient.swift */,
 				47FF35322FD2C6CD059340BB /* TrialManager.swift */,
 			);
 			path = Services;
@@ -340,6 +349,7 @@
 				D7494E4B699E2670FD69DB47 /* CompanionEvents.swift in Sources */,
 				0B02CD5F622A8E0BF79CEDA7 /* CompanionView.swift in Sources */,
 				C46227DD7D686C561DEF5126 /* CompanionViewModel.swift in Sources */,
+				A0468A16A066B8312A62D96D /* CompanionVoiceRecorder.swift in Sources */,
 				67EDA3E2A43416AD48A253E6 /* DashboardView.swift in Sources */,
 				23ED1D4D0D50D60FE80C20BD /* FeatureGateBanner.swift in Sources */,
 				22B4003E3869B0E2E86EC2BB /* LanguageEnvironment.swift in Sources */,
@@ -351,6 +361,7 @@
 				866B9DD607A085AC58CE0E64 /* PaywallView.swift in Sources */,
 				694E6439FD4EDCCE4D69EC54 /* PremiumFeature.swift in Sources */,
 				C4441854C4058DADAEE013BE /* PurchaseManager.swift in Sources */,
+				9580C1713DC1CD802C21A539 /* QuotaClient.swift in Sources */,
 				92FB24EFCC34F984C025658D /* SettingsView.swift in Sources */,
 				28D21CFA24E654D9C3D062E9 /* TaskEditView.swift in Sources */,
 				9AE693CA81908D5EA7034FAE /* TasksView.swift in Sources */,
@@ -376,6 +387,7 @@
 				6C5C66170950527BFF59B626 /* NotificationServiceTests.swift in Sources */,
 				CD9DC8B7EE8373310DF0A2E2 /* ObsidianExporterTests.swift in Sources */,
 				0A0A7AAFCFC1E1CA3BA45DAC /* OpenAIServiceTests.swift in Sources */,
+				30D1AB9AD256E87A46C72086 /* QuotaClientTests.swift in Sources */,
 				56DA69189C2EB93447D9266A /* TodoItemTests.swift in Sources */,
 				973FD73B3CDCDE9B14CB11E4 /* TodoViewModelTests.swift in Sources */,
 				EDA3FC800640CF258766ECB2 /* TrialManagerTests.swift in Sources */,
@@ -460,6 +472,8 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "AI Native Todo";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "用于语音输入待办任务与伙伴聊天，方便你快速捕捉想法。";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "把语音转为文字，用于添加待办任务与伙伴对话。";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
@@ -583,6 +597,8 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "AI Native Todo";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "用于语音输入待办任务与伙伴聊天，方便你快速捕捉想法。";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "把语音转为文字，用于添加待办任务与伙伴对话。";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Light;

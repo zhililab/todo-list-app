@@ -238,6 +238,21 @@ enum Localization {
             "noticeEnable": "允许提醒",
             "noticeEnabled": "提醒已开启",
             "noticeDenied": "通知被拒绝，点此重新开启",
+
+            // Quota（AI 托管额度）
+            "quota.exceeded.free": "免费额度已用完：订阅 Pro 或填自己的 API Key",
+            "quota.exceeded.daily": "今日额度已用完，明天恢复",
+            "quota.exceeded.other": "额度受限：%@",
+            "quota.missingBaseURL": "未配置 AI 额度服务",
+            "quota.server": "AI 服务错误（%@ %@）",
+
+            // Voice（伙伴语音输入）
+            "voice.micA11y": "语音输入",
+            "voice.stopRecording": "结束录音",
+            "voice.speechUnavailable": "语音识别暂不可用",
+            "voice.micPermissionDenied": "麦克风/语音权限被拒绝，请在系统设置中开启",
+            "voice.sessionFailed": "录音会话失败：%@",
+            "voice.engineFailed": "录音引擎失败：%@",
         ],
         "en": [
             "tab.today": "Today Plan",
@@ -455,6 +470,21 @@ enum Localization {
             "noticeEnable": "Enable reminders",
             "noticeEnabled": "Reminders enabled",
             "noticeDenied": "Notifications are blocked — tap to re-enable",
+
+            // Quota (managed AI quota)
+            "quota.exceeded.free": "Free quota used up: subscribe to Pro or add your own API key",
+            "quota.exceeded.daily": "Daily quota used up — try again tomorrow",
+            "quota.exceeded.other": "Quota limited: %@",
+            "quota.missingBaseURL": "AI quota service not configured",
+            "quota.server": "AI service error (%@ %@)",
+
+            // Voice (companion voice input)
+            "voice.micA11y": "Voice input",
+            "voice.stopRecording": "Stop recording",
+            "voice.speechUnavailable": "Speech recognition unavailable",
+            "voice.micPermissionDenied": "Microphone/speech permission denied — enable it in Settings",
+            "voice.sessionFailed": "Recording session failed: %@",
+            "voice.engineFailed": "Recording engine failed: %@",
         ],
     ]
 

@@ -1,0 +1,9 @@
+name = "todo-quota-proxy"
+main = "src/index.js"
+compatibility_date = "2026-08-01"
+
+# KV 命名空间：先运行 `wrangler kv namespace create QUOTA`，
+# 把返回的 id 填到下面再部署。
+[[kv_namespaces]]
+binding = "QUOTA"
+id = "PASTE_NAMESPACE_ID_HERE"

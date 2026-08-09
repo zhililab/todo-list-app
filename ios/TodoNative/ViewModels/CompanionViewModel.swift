@@ -6,6 +6,8 @@ final class CompanionViewModel: ObservableObject {
     @Published var messages: [BuddyMessage] = []
     @Published var input = ""
     @Published var isBusy = false
+    @Published var isTyping = false
+    @Published var reduceMotion = false
 
     struct BuddyMessage: Identifiable, Codable {
         let id: UUID
@@ -61,7 +63,8 @@ final class CompanionViewModel: ObservableObject {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isBusy else { return nil }
         isBusy = true
-        messages.append(BuddyMessage(role: "user", text: trimmed))
+        isTyping = true
+        appendAnimated(BuddyMessage(role: "user", text: trimmed))
         input = ""
         saveHistory()
 
@@ -75,22 +78,55 @@ final class CompanionViewModel: ObservableObject {
             buddyName: name)
 
         let reply: String
-        if let text = try? await OpenAIService.callOpenAI(promptText: user, instructionText: system) {
-            let parsed = CompanionActions.parse(text)
-            var actions = parsed.actions.map { BuddyAction(label: $0.label, kind: $0.kind, payload: $0.payload) }
-            if actions.isEmpty, let taskText = CompanionActions.extractTaskIntent(trimmed) {
-                actions = [BuddyAction(label: Localization.t("buddy.addTodo"), kind: "add_task", payload: ["text": taskText])]
+        do {
+            let text = try await OpenAIService.callChat(messages: [
+                ["role": "system", "content": system],
+                ["role": "user", "content": user]
+            ])
+            if let text, !text.isEmpty {
+                let parsed = CompanionActions.parse(text)
+                var actions = parsed.actions.map { BuddyAction(label: $0.label, kind: $0.kind, payload: $0.payload) }
+                if actions.isEmpty, let taskText = CompanionActions.extractTaskIntent(trimmed) {
+                    actions = [BuddyAction(label: Localization.t("buddy.addTodo"), kind: "add_task", payload: ["text": taskText])]
+                }
+                reply = parsed.text
+                appendAnimated(BuddyMessage(role: "assistant", text: parsed.text, actions: actions))
+            } else {
+                reply = Localization.t("buddy.silent")
+                appendAnimated(BuddyMessage(role: "assistant", text: reply))
             }
-            reply = parsed.text
-            messages.append(BuddyMessage(role: "assistant", text: parsed.text, actions: actions))
-        } else {
+        } catch let error as QuotaError {
+            reply = quotaMessage(for: error)
+            appendAnimated(BuddyMessage(role: "assistant", text: reply))
+        } catch {
             reply = Localization.t("buddy.silent")
-            messages.append(BuddyMessage(role: "assistant", text: reply))
+            appendAnimated(BuddyMessage(role: "assistant", text: reply))
         }
+        isTyping = false
         isBusy = false
         saveHistory()
         memory = CompanionCore.stripMemory(old: memory, events: [trimmed, reply])
         return reply
+    }
+
+    private func quotaMessage(for error: QuotaError) -> String {
+        if case .quotaExceeded(let kind) = error {
+            return kind == "daily"
+                ? Localization.t("quota.exceeded.daily")
+                : Localization.t("quota.exceeded.free")
+        }
+        return error.localizedDescription
+    }
+
+    // iMessage 风格插入动画；尊重系统“减弱动态效果”
+    private func appendAnimated(_ message: BuddyMessage) {
+        if reduceMotion {
+            messages.append(message)
+        } else {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                messages.append(message)
+            }
+        }
     }
 
     func greetingIfNeeded(language: String) {
@@ -98,7 +134,7 @@ final class CompanionViewModel: ObservableObject {
         let today = Self.todayString()
         guard UserDefaults.standard.string(forKey: Self.greetingKey) != today else { return }
         UserDefaults.standard.set(today, forKey: Self.greetingKey)
-        messages.append(BuddyMessage(role: "assistant", text: CompanionCore.greeting(language: language)))
+        appendAnimated(BuddyMessage(role: "assistant", text: CompanionCore.greeting(language: language)))
         saveHistory()
     }
 
@@ -110,7 +146,7 @@ final class CompanionViewModel: ObservableObject {
         var appended = false
         for event in events {
             if event.type == "celebrate" && skipCelebrate { continue }
-            messages.append(BuddyMessage(role: "assistant", text: event.text))
+            appendAnimated(BuddyMessage(role: "assistant", text: event.text))
             appended = true
             if event.type == "nudge", let title = event.taskTitle,
                let task = items.first(where: { $0.title == title }) {
@@ -139,21 +175,22 @@ final class CompanionViewModel: ObservableObject {
         case "add_task":
             if !title.isEmpty {
                 vm.captureNaturalLanguage(title, sourceGoal: "companion")
-                messages.append(BuddyMessage(role: "assistant", text: Localization.t("buddy.addedTodo")))
+                appendAnimated(BuddyMessage(role: "assistant", text: Localization.t("buddy.addedTodo")))
             }
         case "complete_task":
             if let item = vm.unarchivedItems.first(where: { $0.title.localizedCaseInsensitiveContains(title) }), !item.isCompleted {
                 vm.updateStatus(item, status: .done)
-                messages.append(BuddyMessage(role: "assistant", text: Localization.t("buddy.completed")))
+                appendAnimated(BuddyMessage(role: "assistant", text: Localization.t("buddy.completed")))
             }
         case "breakdown":
             if !title.isEmpty {
                 Task {
-                    let text = await AIService.breakdown(goal: title, items: vm.unarchivedItems)
-                    for task in AIService.extractTasks(from: text) {
-                        vm.captureNaturalLanguage(task, sourceGoal: "companion")
+                    if let text = try? await AIService.breakdown(goal: title, items: vm.unarchivedItems) {
+                        for task in AIService.extractTasks(from: text) {
+                            vm.captureNaturalLanguage(task, sourceGoal: "companion")
+                        }
                     }
-                    messages.append(BuddyMessage(role: "assistant", text: Localization.t("buddy.splitTask")))
+                    appendAnimated(BuddyMessage(role: "assistant", text: Localization.t("buddy.splitTask")))
                     saveHistory()
                 }
             }

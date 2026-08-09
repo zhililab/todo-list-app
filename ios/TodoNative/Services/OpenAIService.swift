@@ -73,7 +73,31 @@ enum OpenAIService {
     }
 
     // 与 web app.js callOpenAI 保持一致（OpenAI 兼容 /chat/completions）
+    // 适配：无 Key 且配置了额度代理时走 QuotaClient；否则直连原逻辑
     static func callOpenAI(promptText: String, instructionText: String) async throws -> String? {
+        let messages: [[String: Any]] = [
+            ["role": "system", "content": instructionText],
+            ["role": "user", "content": promptText]
+        ]
+        return try await callChat(messages: messages)
+    }
+
+    // 统一入口：QuotaClient.baseURL 已配置且用户未填 API Key → 走 app 托管额度代理；
+    // 否则走原直连逻辑。
+    static func callChat(messages: [[String: Any]]) async throws -> String? {
+        if QuotaClient.baseURL != nil && apiKey().isEmpty {
+            let body: [String: Any] = [
+                "model": "deepseek-chat",
+                "messages": messages,
+                "stream": false
+            ]
+            let json = try await QuotaClient.chat(body: body)
+            return extractOutputText(from: json)
+        }
+        return try await directCall(messages: messages)
+    }
+
+    private static func directCall(messages: [[String: Any]]) async throws -> String? {
         let key = apiKey().trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty else { return nil }
 
@@ -93,10 +117,7 @@ enum OpenAIService {
 
         let body: [String: Any] = [
             "model": config.model,
-            "messages": [
-                ["role": "system", "content": instructionText],
-                ["role": "user", "content": promptText]
-            ]
+            "messages": messages
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 

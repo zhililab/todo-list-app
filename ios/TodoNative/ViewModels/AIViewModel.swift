@@ -19,6 +19,7 @@ final class AIViewModel: ObservableObject {
     @Published var suggestedTasks: [String] = []
     @Published var statusMessage = ""
     @Published var isTodayPlanOutput = false
+    @Published var quotaExceeded = false
 
     var providers: [AIProvider] { AIProvider.registry }
 
@@ -52,10 +53,14 @@ final class AIViewModel: ObservableObject {
         isTodayPlanOutput = false
         setBusy(remoteStatus: Localization.t("ai.status.breakdownBusy"), localStatus: Localization.t("ai.status.breakdownLocal"))
         Task {
-            let text = await AIService.breakdown(goal: trimmed, items: items)
-            outputText = text
-            suggestedTasks = AIService.extractTasks(from: text)
-            statusMessage = suggestedTasks.isEmpty ? Localization.t("ai.status.saved") : Localization.t("ai.status.breakdownResult", suggestedTasks.count)
+            do {
+                let text = try await AIService.breakdown(goal: trimmed, items: items)
+                outputText = text
+                suggestedTasks = AIService.extractTasks(from: text)
+                statusMessage = suggestedTasks.isEmpty ? Localization.t("ai.status.saved") : Localization.t("ai.status.breakdownResult", suggestedTasks.count)
+            } catch {
+                handleAIError(error)
+            }
             isBusy = false
         }
     }
@@ -64,10 +69,14 @@ final class AIViewModel: ObservableObject {
         isTodayPlanOutput = false
         setBusy(remoteStatus: Localization.t("ai.status.summaryBusy"), localStatus: Localization.t("ai.status.summaryLocal"))
         Task {
-            let text = await AIService.summary(items: items, health: health)
-            outputText = text
-            suggestedTasks = []
-            statusMessage = Localization.t("ai.status.summaryDone")
+            do {
+                let text = try await AIService.summary(items: items, health: health)
+                outputText = text
+                suggestedTasks = []
+                statusMessage = Localization.t("ai.status.summaryDone")
+            } catch {
+                handleAIError(error)
+            }
             isBusy = false
         }
     }
@@ -76,10 +85,14 @@ final class AIViewModel: ObservableObject {
         isTodayPlanOutput = true
         setBusy(remoteStatus: Localization.t("ai.status.planBusy"), localStatus: Localization.t("ai.status.planLocal"))
         Task {
-            let text = await AIService.todayPlan(items: items)
-            outputText = text
-            suggestedTasks = []
-            statusMessage = Localization.t("ai.status.planDone")
+            do {
+                let text = try await AIService.todayPlan(items: items)
+                outputText = text
+                suggestedTasks = []
+                statusMessage = Localization.t("ai.status.planDone")
+            } catch {
+                handleAIError(error)
+            }
             isBusy = false
         }
     }
@@ -102,5 +115,17 @@ final class AIViewModel: ObservableObject {
     private func setBusy(remoteStatus: String, localStatus: String) {
         isBusy = true
         statusMessage = apiKey.isEmpty ? localStatus : remoteStatus
+    }
+
+    private func handleAIError(_ error: Error) {
+        if let quota = error as? QuotaError, case .quotaExceeded(let kind) = quota {
+            statusMessage = kind == "daily"
+                ? Localization.t("quota.exceeded.daily")
+                : Localization.t("quota.exceeded.free")
+            quotaExceeded = true
+        } else {
+            statusMessage = (error as? LocalizedError)?.errorDescription
+                ?? Localization.t("ai.error.empty")
+        }
     }
 }
