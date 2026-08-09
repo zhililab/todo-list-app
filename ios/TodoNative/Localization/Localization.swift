@@ -51,6 +51,8 @@ enum Localization {
             "tasks.prompt": "下一步 Prompt",
             "tasks.priority": "优先级 %d",
             "tasks.minutes": "%d 分钟",
+            "tasks.dueDate": "截止日期",
+            "tasks.clearDue": "清除截止日期",
             "tasks.listTitle": "任务列表",
             "tasks.clearCompleted": "清除已完成",
             "tasks.clearCompletedA11y": "清除已完成任务",
@@ -123,6 +125,7 @@ enum Localization {
             "settings.language": "语言 / Language",
             "settings.zh": "中文",
             "settings.en": "English",
+            "settings.unlockPremium": "解锁订阅",
 
             // Common
             "common.cancel": "取消",
@@ -223,9 +226,18 @@ enum Localization {
             "buddy.noMemory": "（还没说过话）",
             "buddy.silent": "（我沉默了一下，稍等再聊）",
             "buddy.send": "发送",
+            "buddy.addTodo": "加入待办",
             "buddy.addedTodo": "已加入待办 ✓",
             "buddy.completed": "已完成 ✓",
             "buddy.splitTask": "拆解后已加入待办 ✓",
+
+            // Notifications
+            "notification.dueTitle": "任务到期",
+            "notification.dueBody": "「%@」今天到期",
+            "noticeTitle": "提醒通知",
+            "noticeEnable": "允许提醒",
+            "noticeEnabled": "提醒已开启",
+            "noticeDenied": "通知被拒绝，点此重新开启",
         ],
         "en": [
             "tab.today": "Today Plan",
@@ -271,6 +283,8 @@ enum Localization {
             "tasks.prompt": "Next prompt",
             "tasks.priority": "Priority %d",
             "tasks.minutes": "%d min",
+            "tasks.dueDate": "Due Date",
+            "tasks.clearDue": "Clear due date",
             "tasks.listTitle": "Task List",
             "tasks.clearCompleted": "Clear completed",
             "tasks.clearCompletedA11y": "Clear completed tasks",
@@ -340,6 +354,7 @@ enum Localization {
             "settings.language": "语言 / Language",
             "settings.zh": "中文",
             "settings.en": "English",
+            "settings.unlockPremium": "Unlock Premium",
 
             "common.cancel": "Cancel",
             "common.save": "Save",
@@ -429,9 +444,17 @@ enum Localization {
             "buddy.noMemory": "(No conversations yet)",
             "buddy.silent": "(I went quiet for a moment. Let's talk again soon.)",
             "buddy.send": "Send",
+            "buddy.addTodo": "Add to todos",
             "buddy.addedTodo": "Added to todo ✓",
             "buddy.completed": "Marked done ✓",
             "buddy.splitTask": "Split and added to todo ✓",
+
+            "notification.dueTitle": "Task due",
+            "notification.dueBody": "\"%@\" is due today",
+            "noticeTitle": "Reminders",
+            "noticeEnable": "Enable reminders",
+            "noticeEnabled": "Reminders enabled",
+            "noticeDenied": "Notifications are blocked — tap to re-enable",
         ],
     ]
 

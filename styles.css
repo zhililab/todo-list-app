@@ -186,6 +186,8 @@ body {
     padding: 18px;
     display: grid;
     gap: 12px;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
 }
 
 .content-head {
@@ -207,6 +209,12 @@ body {
     border-radius: 10px;
     font: inherit;
     cursor: pointer;
+}
+
+.ghost-btn.notif-on {
+    border-color: #b7e3c6;
+    background: #eefaf1;
+    color: #227a4a;
 }
 
 .intent-panel {
@@ -337,6 +345,7 @@ button {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-wrap: wrap;
 }
 
 .task-meta-row .input-label {
@@ -344,9 +353,47 @@ button {
     width: 72px;
 }
 
+.task-meta-row > * {
+    min-width: 0;
+}
+
 #task-type {
     width: 160px;
     padding: 8px 10px;
+}
+
+#task-due {
+    width: 150px;
+    border: 1px solid #eaded7;
+    background: #fff;
+    color: #36312e;
+    border-radius: 10px;
+    padding: 8px 10px;
+}
+
+#task-due:focus {
+    outline: none;
+    border-color: #d7bfb1;
+    box-shadow: 0 0 0 3px #fff1ea;
+}
+
+#task-due-time {
+    width: 120px;
+    border: 1px solid #eaded7;
+    background: #fff;
+    color: #36312e;
+    border-radius: 10px;
+    padding: 8px 10px;
+}
+
+#task-due-time:focus {
+    outline: none;
+    border-color: #d7bfb1;
+    box-shadow: 0 0 0 3px #fff1ea;
+}
+
+#task-due-time-label {
+    width: auto;
 }
 
 #add-task,
@@ -531,6 +578,11 @@ button {
     margin-top: 4px;
     font-size: 13px;
     color: var(--ok);
+}
+
+.task-overdue {
+    color: #d0614f;
+    font-weight: 600;
 }
 
 .task-chips {
@@ -835,6 +887,7 @@ textarea:disabled,
 input:disabled {
     opacity: 0.58;
     cursor: not-allowed;
+    transform: none !important;
 }
 
 @media (max-width: 1180px) {
@@ -896,5 +949,230 @@ input:disabled {
         flex-direction: column;
         align-items: flex-start;
         gap: 8px;
+    }
+}
+
+@keyframes page-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes task-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes task-out {
+    to { opacity: 0; transform: translateX(24px); }
+}
+
+@keyframes just-completed {
+    0% { background-color: #fff; }
+    40% { background-color: var(--accent-soft); }
+    100% { background-color: #fff; }
+}
+
+@keyframes overdue-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.75; }
+}
+
+@keyframes msg-in-left {
+    from { opacity: 0; transform: translateX(-6px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes msg-in-right {
+    from { opacity: 0; transform: translateX(6px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes panel-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes stat-pop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.12); }
+    100% { transform: scale(1); }
+}
+
+@keyframes shimmer {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
+}
+
+body {
+    animation: page-in 0.3s ease;
+}
+
+.panel {
+    transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.panel:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 40px rgba(68, 77, 68, 0.14);
+}
+
+.filter-btn,
+.ghost-btn,
+.mini-btn,
+.delete-btn,
+.panel-tab,
+.buddy-action-btn,
+.nav-add,
+.menu-item,
+.lang-select,
+.task-checkbox,
+#add-task,
+#ai-breakdown,
+#buddy-send {
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.filter-btn:hover,
+.ghost-btn:hover,
+.mini-btn:hover,
+.delete-btn:hover,
+.panel-tab:hover,
+.buddy-action-btn:hover,
+.nav-add:hover,
+.menu-item:hover,
+.lang-select:hover,
+#add-task:hover,
+#ai-breakdown:hover,
+#buddy-send:hover {
+    transform: translateY(-1px);
+}
+
+.filter-btn:active,
+.ghost-btn:active,
+.mini-btn:active,
+.delete-btn:active,
+.panel-tab:active,
+.buddy-action-btn:active,
+.nav-add:active,
+.menu-item:active,
+#add-task:active,
+#ai-breakdown:active,
+#buddy-send:active {
+    transform: translateY(0) scale(0.97);
+}
+
+input:not([type="checkbox"]),
+textarea,
+select {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.task-item {
+    transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    animation: task-in 0.25s ease;
+}
+
+.task-item:hover {
+    background: #fdf7f2;
+    transform: translateX(2px);
+}
+
+.task-item.selected:hover {
+    background: #f4f9ff;
+}
+
+.task-item.just-completed {
+    animation: just-completed 0.35s ease;
+}
+
+.task-item.removing {
+    animation: task-out 0.25s ease forwards;
+    pointer-events: none;
+}
+
+.task-checkbox:checked {
+    transform: scale(1.08);
+}
+
+.task-chips span {
+    transition: transform 0.15s ease;
+}
+
+.task-chips span:hover {
+    transform: scale(1.05);
+}
+
+.task-overdue {
+    animation: overdue-pulse 2s ease-in-out infinite;
+}
+
+.buddy-msg.assistant {
+    animation: msg-in-left 0.2s ease-out;
+}
+
+.buddy-msg.user {
+    animation: msg-in-right 0.2s ease-out;
+}
+
+.buddy-msg.no-anim {
+    animation: none;
+}
+
+.panel-reveal {
+    animation: panel-fade 0.18s ease;
+}
+
+.stat-card strong {
+    display: inline-block;
+}
+
+.stat-pop {
+    animation: stat-pop 0.18s ease;
+}
+
+#progress-fill {
+    position: relative;
+    overflow: hidden;
+}
+
+#progress-fill:not([style*="width: 0%"])::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.45) 50%, transparent 65%);
+    animation: shimmer 2.5s ease-in-out infinite;
+}
+
+.avatar {
+    transition: transform 0.2s ease;
+}
+
+.avatar:hover {
+    transform: rotate(3deg) scale(1.06);
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #e5d8ce;
+    border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #d8c6ba;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
     }
 }

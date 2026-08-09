@@ -5,6 +5,7 @@ struct TasksView: View {
     @EnvironmentObject private var purchaseManager: PurchaseManager
     @EnvironmentObject private var lang: LanguageEnvironment
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var captureText = ""
     @State private var type: TaskType = .personal
@@ -21,6 +22,10 @@ struct TasksView: View {
 
     private var isWideLayout: Bool {
         horizontalSizeClass == .regular
+    }
+
+    private var listAnimation: Animation? {
+        reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.8)
     }
 
     private var filteredList: [TodoItem] {
@@ -57,7 +62,7 @@ struct TasksView: View {
                 PaywallView()
             }
             .sheet(item: $editingItem) { item in
-                TaskEditView(item: item) { title, context, criteria, prompt, minutes, priority in
+                TaskEditView(item: item) { title, context, criteria, prompt, minutes, priority, dueDate in
                     vm.updateItem(
                         item,
                         title: title,
@@ -65,7 +70,8 @@ struct TasksView: View {
                         criteria: criteria,
                         prompt: prompt,
                         minutes: minutes,
-                        priority: priority
+                        priority: priority,
+                        dueDate: dueDate
                     )
                 }
             }
@@ -185,7 +191,7 @@ struct TasksView: View {
                 Spacer()
                 if !vm.completedItems.isEmpty {
                     Button(Localization.t("tasks.clearCompleted")) {
-                        vm.clearCompleted()
+                        withAnimation(listAnimation) { vm.clearCompleted() }
                     }
                     .ghostButton()
                     .accessibilityLabel(Localization.t("tasks.clearCompletedA11y"))
@@ -238,14 +244,18 @@ struct TasksView: View {
                 VStack(spacing: 0) {
                     ForEach(filteredList, id: \.id) { item in
                         TodoCardView(item: item) { status in
-                            vm.updateStatus(item, status: status)
+                            withAnimation(listAnimation) { vm.updateStatus(item, status: status) }
                         } onArchive: {
-                            vm.archive(item)
+                            withAnimation(listAnimation) { vm.archive(item) }
                         } onDelete: {
-                            vm.delete(item)
+                            withAnimation(listAnimation) { vm.delete(item) }
                         } onEdit: {
                             editingItem = item
                         }
+                        .transition(.asymmetric(
+                            insertion: .opacity.combined(with: .move(edge: .bottom)),
+                            removal: .opacity.combined(with: .scale(scale: 0.85))
+                        ))
                     }
                 }
                 .background(Color.white)
@@ -305,20 +315,22 @@ struct TasksView: View {
         guard !text.isEmpty else { return }
 
         if showDetails {
-            vm.addItem(
-                title: text,
-                type: type,
-                context: context,
-                criteria: criteria,
-                prompt: prompt,
-                minutes: minutes,
-                priority: priority
-            )
+            withAnimation(listAnimation) {
+                vm.addItem(
+                    title: text,
+                    type: type,
+                    context: context,
+                    criteria: criteria,
+                    prompt: prompt,
+                    minutes: minutes,
+                    priority: priority
+                )
+            }
             context = ""
             criteria = ""
             prompt = ""
         } else {
-            vm.captureNaturalLanguage(text, type: type)
+            withAnimation(listAnimation) { vm.captureNaturalLanguage(text, type: type) }
         }
         captureText = ""
     }

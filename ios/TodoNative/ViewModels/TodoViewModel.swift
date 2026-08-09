@@ -106,7 +106,7 @@ final class TodoViewModel: ObservableObject {
         }
     }
 
-    func addItem(title: String, type: TaskType, context: String, criteria: String, prompt: String, minutes: Int, priority: Int) {
+    func addItem(title: String, type: TaskType, context: String, criteria: String, prompt: String, minutes: Int, priority: Int, dueDate: Date? = nil) {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         let item = TodoItem(
@@ -117,14 +117,18 @@ final class TodoViewModel: ObservableObject {
             taskType: type,
             estimatedMinutes: minutes,
             priority: priority,
-            status: .todo
+            status: .todo,
+            dueDate: dueDate
         )
         modelContext.insert(item)
+        if let dueDate {
+            NotificationService.scheduleDueReminder(taskID: item.id, title: item.title, dueDate: dueDate)
+        }
         save()
     }
 
     // 对齐 web app.js inferMeta：从自然语言推断优先级与时长
-    func captureNaturalLanguage(_ text: String, type: TaskType = .personal, sourceGoal: String = "") {
+    func captureNaturalLanguage(_ text: String, type: TaskType = .personal, sourceGoal: String = "", dueDate: Date? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         let lower = trimmed.lowercased()
@@ -158,20 +162,27 @@ final class TodoViewModel: ObservableObject {
             estimatedMinutes: minutes,
             priority: priority,
             status: .todo,
+            dueDate: dueDate,
             sourceGoal: sourceGoal
         )
         modelContext.insert(item)
+        if let dueDate {
+            NotificationService.scheduleDueReminder(taskID: item.id, title: item.title, dueDate: dueDate)
+        }
         save()
     }
 
     func updateStatus(_ item: TodoItem, status: TodoStatus) {
         item.status = status
         item.updatedAt = Date()
-        if status == .done { item.completedAt = Date() }
+        if status == .done {
+            item.completedAt = Date()
+            NotificationService.cancelReminder(taskID: item.id)
+        }
         save()
     }
 
-    func updateItem(_ item: TodoItem, title: String, context: String, criteria: String, prompt: String, minutes: Int, priority: Int) {
+    func updateItem(_ item: TodoItem, title: String, context: String, criteria: String, prompt: String, minutes: Int, priority: Int, dueDate: Date?) {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty {
             item.title = trimmed
@@ -181,23 +192,32 @@ final class TodoViewModel: ObservableObject {
         item.nextPrompt = prompt
         item.estimatedMinutes = minutes
         item.priority = priority
+        item.dueDate = dueDate
         item.updatedAt = Date()
+        if let dueDate {
+            NotificationService.scheduleDueReminder(taskID: item.id, title: item.title, dueDate: dueDate)
+        } else {
+            NotificationService.cancelReminder(taskID: item.id)
+        }
         save()
     }
 
     func clearCompleted() {
         for item in completedItems {
+            NotificationService.cancelReminder(taskID: item.id)
             modelContext.delete(item)
         }
         save()
     }
 
     func delete(_ item: TodoItem) {
+        NotificationService.cancelReminder(taskID: item.id)
         modelContext.delete(item)
         save()
     }
 
     func archive(_ item: TodoItem) {
+        NotificationService.cancelReminder(taskID: item.id)
         item.isArchived = true
         item.updatedAt = Date()
         save()

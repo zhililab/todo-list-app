@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     const taskInput = document.getElementById('task-input');
     const taskTypeSelect = document.getElementById('task-type');
+    const taskDueInput = document.getElementById('task-due');
+    const taskDueTimeInput = document.getElementById('task-due-time');
     const addTaskBtn = document.getElementById('add-task');
     const taskList = document.getElementById('task-list');
     const filterBtns = document.querySelectorAll('.filter-btn');
@@ -48,6 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const buddyInput = document.getElementById('buddy-input');
     const buddySendBtn = document.getElementById('buddy-send');
     const panelTabs = document.querySelectorAll('.panel-tab');
+    const notifToggleBtn = document.getElementById('notif-toggle');
 
     const STORAGE_KEYS = {
         TASKS: 'tasks',
@@ -233,7 +236,21 @@ document.addEventListener('DOMContentLoaded', () => {
             buddySilent: '（我暂时沉默了一下，稍后再聊）',
             buddyRetry: '重试',
             buddyEmpty: '还没说过话。先打个招呼吧。',
-            buddyAdded: '已加入待办：{text}'
+            buddyAdded: '已加入待办：{text}',
+            buddyAddTaskBtn: '加入待办',
+            buddyNoKey: '还没配 API Key。到 AI 设置里填一个，我就能陪你聊了。',
+            taskDueLabel: '截止',
+            taskDueTimeLabel: '时间',
+            editBtn: '编辑',
+            editTitlePrompt: '新的任务名称：',
+            editDuePrompt: '新截止日期（YYYY-MM-DD 或 YYYY-MM-DD HH:mm，留空清除）：',
+            notificationDueTitle: '任务到期',
+            notificationDueBody: '「{text}」今天到期',
+            notifEnable: '开启到期提醒',
+            notifEnabled: '到期提醒已开启',
+            notifDenied: '通知被浏览器禁用，点此查看',
+            notifDeniedMsg: '通知权限已被浏览器拒绝，是否重新尝试请求？',
+            notifUnavailable: '当前环境不支持通知'
         },
         en: {
             appTitle: 'AI-native Todo',
@@ -408,7 +425,21 @@ document.addEventListener('DOMContentLoaded', () => {
             buddySilent: '（I went quiet for a moment — talk again soon）',
             buddyRetry: 'Retry',
             buddyEmpty: 'No messages yet. Say hello.',
-            buddyAdded: 'Added to todos: {text}'
+            buddyAdded: 'Added to todos: {text}',
+            buddyAddTaskBtn: 'Add to todos',
+            buddyNoKey: 'No API key yet. Add one in AI settings and I\'ll be here.',
+            taskDueLabel: 'Due',
+            taskDueTimeLabel: 'Time',
+            editBtn: 'Edit',
+            editTitlePrompt: 'New task name:',
+            editDuePrompt: 'New due date (YYYY-MM-DD or YYYY-MM-DD HH:mm, empty to clear):',
+            notificationDueTitle: 'Task due',
+            notificationDueBody: '"{text}" is due today',
+            notifEnable: 'Enable due reminders',
+            notifEnabled: 'Due reminders on',
+            notifDenied: 'Notifications blocked — click for details',
+            notifDeniedMsg: 'Notification permission is blocked by the browser. Try requesting again?',
+            notifUnavailable: 'Notifications not supported here'
         }
     };
     let currentLang = localStorage.getItem(STORAGE_KEYS.LANG) === 'en' ? 'en' : 'zh';
@@ -540,6 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (openaiKeyInput) openaiKeyInput.placeholder = t('placeholderOpenAiKey');
         setCurrentDate();
         renderTasks(currentFilter);
+        syncNotifToggle();
     }
 
     function setUiText(key, element, vars) {
@@ -599,6 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
             id: typeof task?.id === 'string' ? task.id : createId(),
             text,
             completed: Boolean(task?.completed),
+            dueDate: typeof task?.dueDate === 'string' ? task.dueDate : '',
             type: TASK_TYPES.includes(task?.type) ? task.type : inferType(text),
             priority: ['high', 'medium', 'low'].includes(task?.priority) ? task.priority : meta.priority,
             effort: typeof task?.effort === 'string' && task.effort ? task.effort : meta.effort,
@@ -677,6 +710,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return t('nextActionWithEffort', { text: task.text, effort: task.effort });
     }
 
+    const lastStatValues = {};
+
     function updateStats() {
         const total = tasks.length;
         const active = tasks.filter(task => !task.completed).length;
@@ -697,6 +732,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (progressTrack) {
             progressTrack.setAttribute('aria-valuenow', String(completionRate));
         }
+
+        const statEls = [statTotal, statActive, statCompleted, statHealth];
+        const statValues = [total, active, completed, healthScore];
+        statEls.forEach((el, index) => {
+            if (statValues[index] === lastStatValues[index]) return;
+            lastStatValues[index] = statValues[index];
+            el.classList.remove('stat-pop');
+            void el.offsetWidth;
+            el.classList.add('stat-pop');
+            setTimeout(() => el.classList.remove('stat-pop'), 180);
+        });
     }
 
     function setCurrentDate() {
@@ -735,6 +781,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const taskItem = document.createElement('li');
         taskItem.classList.add('task-item');
         taskItem.classList.toggle('selected', task.id === selectedTaskId);
+        taskItem.dataset.id = task.id;
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
@@ -756,6 +803,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const taskMeta = document.createElement('span');
         taskMeta.classList.add('task-meta');
         taskMeta.textContent = `${task.type} · ${task.project} · ${priorityLabel(task.priority)} · ${task.effort}`;
+        if (task.dueDate) {
+            const due = document.createElement('span');
+            const formatted = window.formatDueDate ? window.formatDueDate(task.dueDate, currentLang) : task.dueDate;
+            due.textContent = ` · ${t('taskDueLabel')} ${formatted}`;
+            if (!task.completed && window.isTaskOverdue && window.isTaskOverdue(task, nowString())) {
+                due.classList.add('task-overdue');
+            }
+            taskMeta.appendChild(due);
+        }
 
         const chips = document.createElement('div');
         chips.classList.add('task-chips');
@@ -788,6 +844,12 @@ document.addEventListener('DOMContentLoaded', () => {
         splitBtn.dataset.id = task.id;
         splitBtn.textContent = t('splitBtn');
 
+        const editBtn = document.createElement('button');
+        editBtn.classList.add('mini-btn');
+        editBtn.dataset.action = 'edit';
+        editBtn.dataset.id = task.id;
+        editBtn.textContent = t('editBtn');
+
         const deleteBtn = document.createElement('button');
         deleteBtn.classList.add('delete-btn');
         deleteBtn.dataset.action = 'delete';
@@ -800,6 +862,7 @@ document.addEventListener('DOMContentLoaded', () => {
         taskBody.appendChild(chips);
         actions.appendChild(notesBtn);
         actions.appendChild(splitBtn);
+        actions.appendChild(editBtn);
         actions.appendChild(deleteBtn);
 
         taskItem.appendChild(checkbox);
@@ -866,17 +929,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const text = textValue.trim();
         if (!text) return null;
 
+        const dateValue = taskDueInput ? taskDueInput.value : '';
+        const timeValue = taskDueTimeInput ? taskDueTimeInput.value : '';
+        const dueDate = dateValue ? (timeValue ? `${dateValue}T${timeValue}` : dateValue) : '';
         const meta = inferMeta(text);
         const task = normalizeTask({
             text,
             completed: false,
             type: taskTypeSelect ? taskTypeSelect.value : DEFAULT_TASK_TYPE,
+            dueDate,
             ...meta,
             ...overrides
         });
 
         tasks.push(task);
         selectedTaskId = task.id;
+        if (taskDueInput) taskDueInput.value = '';
+        if (taskDueTimeInput) taskDueTimeInput.value = '';
+        if (task.dueDate) requestNotificationPermission();
         saveTasks();
         renderTasks(currentFilter);
         taskInput.value = '';
@@ -893,13 +963,37 @@ document.addEventListener('DOMContentLoaded', () => {
         task.completed = !task.completed;
         saveTasks();
         renderTasks(currentFilter);
+        if (task.completed) {
+            localStorage.removeItem(`notified_${task.id}`);
+            const item = findRenderedTaskItem(id);
+            if (item) {
+                item.classList.add('just-completed');
+                setTimeout(() => item.classList.remove('just-completed'), 360);
+            }
+        }
+    }
+
+    function findRenderedTaskItem(id) {
+        return Array.from(taskList.children).find(el =>
+            el.classList.contains('task-item') && el.querySelector('.task-checkbox')?.dataset.id === String(id)
+        );
     }
 
     function deleteTask(id) {
-        tasks = tasks.filter(task => task.id !== id);
-        if (selectedTaskId === id) selectedTaskId = tasks[0]?.id || null;
-        saveTasks();
-        renderTasks(currentFilter);
+        const item = findRenderedTaskItem(id);
+        const commit = () => {
+            if (!findTask(id)) return;
+            tasks = tasks.filter(task => task.id !== id);
+            if (selectedTaskId === id) selectedTaskId = tasks[0]?.id || null;
+            saveTasks();
+            renderTasks(currentFilter);
+        };
+        if (item && !item.classList.contains('removing')) {
+            item.classList.add('removing');
+            setTimeout(commit, 250);
+        } else {
+            commit();
+        }
     }
 
     function clearCompleted() {
@@ -1021,9 +1115,10 @@ document.addEventListener('DOMContentLoaded', () => {
             buddyMessagesEl.innerHTML = `<div class="buddy-empty">${t('buddyEmpty')}</div>`;
             return;
         }
-        buddyHistory.forEach(msg => {
+        buddyHistory.forEach((msg, index) => {
             const div = document.createElement('div');
             div.classList.add('buddy-msg', msg.role === 'user' ? 'user' : 'assistant');
+            if (index < buddyHistory.length - 1) div.classList.add('no-anim');
             div.textContent = msg.content;
             buddyMessagesEl.appendChild(div);
             if (msg.role === 'assistant' && msg.actions && msg.actions.length) {
@@ -1045,9 +1140,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function switchPanelTab(tabId) {
         const showBuddy = tabId === 'buddy';
+        const panel = showBuddy ? buddyPanel : aitoolsPanel;
         if (buddyPanel) buddyPanel.hidden = !showBuddy;
         if (aitoolsPanel) aitoolsPanel.hidden = showBuddy;
         panelTabs.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabId));
+        if (panel) {
+            panel.classList.remove('panel-reveal');
+            void panel.offsetWidth;
+            panel.classList.add('panel-reveal');
+        }
     }
 
     async function buddySend(userText) {
@@ -1058,28 +1159,37 @@ document.addEventListener('DOMContentLoaded', () => {
         buddyInput.value = '';
         buddySendBtn.disabled = true;
 
-        const name = localStorage.getItem(BUDDY_KEYS.NAME) || '';
-        const tasksNow = tasks;
-        const ctx = window.buildCompanionContext({
-            memorySummary: buddyMemory,
-            tasks: tasksNow,
-            recentEvents: momentTexts(),
-            history: buddyHistory.slice(-8),
-            lang: currentLang,
-            buddyName: name,
-            health: calculateHealthScore(),
-            doneCount: tasksNow.filter(t => t.completed).length,
-            totalCount: tasksNow.length
-        });
-
         try {
+            const name = localStorage.getItem(BUDDY_KEYS.NAME) || '';
+            const tasksNow = tasks;
+            const ctx = typeof window.buildCompanionContext === 'function'
+                ? window.buildCompanionContext({
+                    memorySummary: buddyMemory,
+                    tasks: tasksNow,
+                    recentEvents: momentTexts(tasksNow),
+                    history: buddyHistory.slice(-8),
+                    lang: currentLang,
+                    buddyName: name,
+                    health: calculateHealthScore(),
+                    doneCount: tasksNow.filter(t => t.completed).length,
+                    totalCount: tasksNow.length
+                })
+                : { userPrompt: `用户: ${text}`, systemPrompt: '' };
+
             const reply = await callOpenAI(ctx.userPrompt, ctx.systemPrompt);
             if (!reply) {
-                buddySay('assistant', t('buddySilent'));
+                buddySay('assistant', t('buddyNoKey'));
                 return;
             }
             const parsed = window.parseBuddyActions ? window.parseBuddyActions(reply) : { text: reply, actions: [] };
-            buddySay('assistant', parsed.text || t('buddySilent'), parsed.actions);
+            let actions = parsed.actions;
+            if (!actions.length && window.extractTaskIntent) {
+                const intent = window.extractTaskIntent(text);
+                if (intent && intent.taskText) {
+                    actions = [{ action: 'add_task', payload: { text: intent.taskText }, label: t('buddyAddTaskBtn') }];
+                }
+            }
+            buddySay('assistant', parsed.text || t('buddySilent'), actions);
         } catch (error) {
             buddySay('assistant', t('buddySilent'));
         } finally {
@@ -1095,7 +1205,6 @@ document.addEventListener('DOMContentLoaded', () => {
             completedToday: tasks.filter(t => t.completed).length,
             nudgedIds: buddyNudged
         }) : [];
-        const events = window.buildCompanionContext ? 'greeding' : '';
         const name = localStorage.getItem(BUDDY_KEYS.NAME) || '';
         const ctx = window.buildCompanionContext && window.buildCompanionContext({
             memorySummary: buddyMemory,
@@ -1128,7 +1237,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!action || !action.action) return;
         const kind = action.action;
         if (kind === 'add_task') {
-            const text = (action.payload && (action.payload.text || action.payload.title)) || '';
+            const text = (action.payload && (action.payload.text || action.payload.title || action.payload.name || action.payload.task || action.payload.goal)) || '';
             if (!text) return;
             const task = addTask(text, { sourceGoal: lastBreakdownGoal || '' });
             if (task) buddySay('assistant', t('buddyAdded', { text }));
@@ -1141,7 +1250,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         if (kind === 'breakdown') {
-            const goal = (action.payload && (action.payload.text || action.payload.title || action.payload.goal)) || '';
+            const goal = (action.payload && (action.payload.text || action.payload.title || action.payload.name || action.payload.task || action.payload.goal)) || '';
             if (goal) {
                 if (goalInput) goalInput.value = goal;
                 handleBreakdown();
@@ -1149,7 +1258,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function momentTexts(tasks) {
+    function momentTexts(tasks = []) {
         const ms = window.momentsFor ? window.momentsFor({
             tasks: tasks.map(t => ({ id: t.id, text: t.text, completed: t.completed, createdAt: t.createdAt })),
             completedToday: tasks.filter(t => t.completed).length,
@@ -1503,6 +1612,114 @@ document.addEventListener('DOMContentLoaded', () => {
         handleBreakdown();
     }
 
+    function editTask(id) {
+        const task = findTask(id);
+        if (!task) return;
+
+        const newName = window.prompt(t('editTitlePrompt'), task.text);
+        if (newName === null) return;
+        const trimmedName = newName.trim();
+        if (trimmedName) task.text = trimmedName;
+
+        const newDue = window.prompt(t('editDuePrompt'), task.dueDate || '');
+        if (newDue !== null) {
+            const trimmedDue = newDue.trim();
+            if (!trimmedDue) {
+                task.dueDate = '';
+                localStorage.removeItem(`notified_${task.id}`);
+            } else if (/^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2})?$/.test(trimmedDue)) {
+                const parsed = window.parseDueDate ? window.parseDueDate(trimmedDue) : null;
+                if (parsed) {
+                    task.dueDate = parsed.time ? `${parsed.date}T${parsed.time}` : parsed.date;
+                    localStorage.removeItem(`notified_${task.id}`);
+                    requestNotificationPermission();
+                }
+            }
+        }
+
+        saveTasks();
+        renderTasks(currentFilter);
+    }
+
+    function nowString() {
+        const now = new Date();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hour = String(now.getHours()).padStart(2, '0');
+        const minute = String(now.getMinutes()).padStart(2, '0');
+        return `${now.getFullYear()}-${month}-${day}T${hour}:${minute}`;
+    }
+
+    function requestNotificationPermission() {
+        if (typeof Notification === 'undefined') return;
+        if (Notification.permission !== 'default') {
+            syncNotifToggle();
+            return;
+        }
+        try {
+            const result = Notification.requestPermission();
+            if (result && typeof result.then === 'function') result.then(syncNotifToggle).catch(() => {});
+            else syncNotifToggle();
+        } catch (_error) {
+            syncNotifToggle();
+        }
+    }
+
+    function notifAvailable() {
+        return typeof Notification !== 'undefined';
+    }
+
+    function syncNotifToggle() {
+        if (!notifToggleBtn) return;
+        if (!notifAvailable() || !('Notification' in window)) {
+            notifToggleBtn.textContent = t('notifUnavailable');
+            notifToggleBtn.disabled = true;
+            return;
+        }
+        const status = Notification.permission;
+        if (status === 'granted') {
+            notifToggleBtn.textContent = t('notifEnabled');
+            notifToggleBtn.classList.add('notif-on');
+        } else if (status === 'denied') {
+            notifToggleBtn.textContent = t('notifDenied');
+            notifToggleBtn.classList.remove('notif-on');
+        } else {
+            notifToggleBtn.textContent = t('notifEnable');
+            notifToggleBtn.classList.remove('notif-on');
+        }
+    }
+
+    if (notifToggleBtn) {
+        notifToggleBtn.addEventListener('click', () => {
+            if (!notifAvailable()) return;
+            if (Notification.permission === 'denied') {
+                if (confirm(t('notifDeniedMsg'))) requestNotificationPermission();
+                else return;
+            }
+            requestNotificationPermission();
+        });
+    }
+
+    function checkDueNotifications() {
+        if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+        const now = nowString();
+        tasks.forEach(task => {
+            const key = `notified_${task.id}`;
+            if (task.completed) {
+                localStorage.removeItem(key);
+                return;
+            }
+            if (!task.dueDate || localStorage.getItem(key)) return;
+            if (!window.shouldNotify || !window.shouldNotify(task, now, false)) return;
+            try {
+                new Notification(t('notificationDueTitle'), { body: t('notificationDueBody', { text: task.text }) });
+                localStorage.setItem(key, '1');
+            } catch (_error) {
+                /* skip */
+            }
+        });
+    }
+
     addTaskBtn.addEventListener('click', () => addTask());
     quickFocusBtn.addEventListener('click', () => taskInput.focus());
 
@@ -1529,6 +1746,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderTasks(currentFilter);
         }
         if (action === 'split') splitTask(id);
+        if (action === 'edit') editTask(id);
     });
 
     filterBtns.forEach(btn => {
@@ -1567,6 +1785,10 @@ document.addEventListener('DOMContentLoaded', () => {
     buddyLoad();
     renderBuddyMessages();
     buddyGreet();
+    syncNotifToggle();
+    requestNotificationPermission();
+    checkDueNotifications();
+    setInterval(checkDueNotifications, 60000);
     if (langSelect) {
         langSelect.addEventListener('change', () => {
             currentLang = langSelect.value === 'en' ? 'en' : 'zh';

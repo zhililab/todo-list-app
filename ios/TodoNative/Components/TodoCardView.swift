@@ -2,6 +2,10 @@ import SwiftUI
 
 struct TodoCardView: View {
     @EnvironmentObject private var lang: LanguageEnvironment
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @State private var popScale: CGFloat = 1
+    @State private var flashOpacity: Double = 0
 
     let item: TodoItem
     let onStatusChange: (TodoStatus) -> Void
@@ -86,6 +90,7 @@ struct TodoCardView: View {
                 Image(systemName: item.isCompleted ? "checkmark.square.fill" : "square")
                     .font(.system(size: 22))
                     .foregroundStyle(item.isCompleted ? Color.accentBlue : Color.appLine)
+                    .scaleEffect(popScale)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(item.isCompleted ? Localization.t("card.unmarkDone") : Localization.t("card.markDone"))
@@ -219,6 +224,19 @@ struct TodoCardView: View {
                 Button(Localization.t("card.delete"), role: .destructive) { onDelete() }
             }
         }
+        .onChange(of: item.isCompleted) { _, completed in
+            guard completed else { return }
+            flashOpacity = 0.35
+            withAnimation(.easeOut(duration: 0.5)) { flashOpacity = 0 }
+            guard !reduceMotion else { return }
+            withAnimation(.spring(response: 0.18, dampingFraction: 0.5)) { popScale = 1.08 }
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.7).delay(0.1)) { popScale = 1 }
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusLg)
+                .fill(Color.accentSoft)
+                .opacity(flashOpacity)
+        )
     }
 }
 

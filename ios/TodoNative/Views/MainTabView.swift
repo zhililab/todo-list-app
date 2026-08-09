@@ -20,12 +20,12 @@ struct MainTabView: View {
                 .tabItem { Label(Localization.t("tab.tasks"), systemImage: "checklist") }
                 .tag(1)
 
-            SettingsView()
-                .tabItem { Label(Localization.t("tab.settings"), systemImage: "gearshape") }
-                .tag(2)
-
             CompanionView()
                 .tabItem { Label(Localization.t("tab.companion"), systemImage: "bubble.left.and.bubble.right") }
+                .tag(2)
+
+            SettingsView()
+                .tabItem { Label(Localization.t("tab.settings"), systemImage: "gearshape") }
                 .tag(3)
         }
         .onAppear {

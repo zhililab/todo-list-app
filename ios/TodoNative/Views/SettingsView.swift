@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UserNotifications
 
 struct SettingsView: View {
     @EnvironmentObject private var trialManager: TrialManager
@@ -13,13 +14,80 @@ struct SettingsView: View {
     @State private var showPaywall = false
     @State private var showExport = false
     @State private var copied = false
+    @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
     @AppStorage("companion_name") private var buddyName = ""
     @AppStorage("companion_greeting_enabled") private var buddyGreeting = true
+
+    private var noticeText: String {
+        switch notificationStatus {
+        case .authorized, .ephemeral, .provisional:
+            return Localization.t("noticeEnabled")
+        case .denied:
+            return Localization.t("noticeDenied")
+        default:
+            return Localization.t("noticeEnable")
+        }
+    }
+
+    private var noticeIcon: String {
+        switch notificationStatus {
+        case .authorized, .ephemeral, .provisional:
+            return "bell.badge.fill"
+        case .denied:
+            return "bell.slash.fill"
+        default:
+            return "bell.badge"
+        }
+    }
+
+    private func refreshNotificationStatus() {
+        NotificationService.authorizationStatus { status in
+            guard let status else { return }
+            DispatchQueue.main.async {
+                notificationStatus = status
+            }
+        }
+    }
 
     var body: some View {
         let _ = lang.language
         NavigationStack {
             Form {
+                if !purchaseManager.hasPremium {
+                    Section {
+                        Button(Localization.t("settings.unlockPremium")) {
+                            showPaywall = true
+                        }
+                        .primaryActionButton()
+                    }
+                }
+
+                Section(Localization.t("noticeTitle")) {
+                    Button {
+                        switch notificationStatus {
+                        case .denied:
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                        case .authorized, .ephemeral, .provisional:
+                            refreshNotificationStatus()
+                        default:
+                            NotificationService.requestAuthorization { _ in
+                                refreshNotificationStatus()
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Text(noticeText)
+                                .foregroundStyle(Color.accentBlue)
+                            Spacer()
+                            Image(systemName: noticeIcon)
+                                .foregroundStyle(notificationStatus == .denied ? Color.red : (notificationStatus == .authorized || notificationStatus == .ephemeral || notificationStatus == .provisional ? Color.success : Color.appMuted))
+                        }
+                    }
+                    .onAppear { refreshNotificationStatus() }
+                }
+
                 Section(Localization.t("settings.account")) {
                     LabeledContent(Localization.t("settings.trial")) {
                         Text(trialManager.isTrialActive ? Localization.t("settings.trialDays", trialManager.remainingDays) : Localization.t("settings.trialEnded"))

@@ -1,5 +1,36 @@
 const ALLOWED_KINDS = ['add_task', 'complete_task', 'breakdown'];
 
+const INTENT_PATTERNS = [
+    /(?:帮我|请|麻烦)?\s*(?:创建|新建|添加|加上|加个|记下|加入|收下)\s*(?:一个)?\s*(?:任务|待办|事项|todo)?\s*[:：]?\s*(.+)/,
+    /(?:帮我|请)\s*(?:创建|添加|记下|收下)\s*(.+)/
+];
+const EN_INTENT_PATTERN = /(?:create|add|remember|note)\s+(?:a\s+)?(?:task|todo)?\s*(?:[:：]\s*)?(.+)/i;
+
+export function extractTaskIntent(userText) {
+    const text = String(userText || '').trim();
+    if (!text) return null;
+    let captured = null;
+    for (const pattern of INTENT_PATTERNS) {
+        const match = text.match(pattern);
+        if (match && match[1]) {
+            captured = match[1];
+            break;
+        }
+    }
+    if (captured === null) {
+        const match = text.match(EN_INTENT_PATTERN);
+        captured = match ? match[1] : null;
+    }
+    if (captured === null) return null;
+    let taskText = captured.trim()
+        .replace(/^[:：\-、\s]+/, '')
+        .replace(/^["'「『“”]|["'」』”’]+$/, '')
+        .trim();
+    if (taskText.length < 2 || taskText.length > 40) return null;
+    if (/[?？]/.test(taskText) || /什么|吗|怎么|如何|why|what|how/i.test(taskText)) return null;
+    return { taskText };
+}
+
 export function parseBuddyActions(reply, maxActions = 2) {
     const text = String(reply || '').trim();
     if (!text) return { text: '', actions: [] };
@@ -26,9 +57,11 @@ export function parseBuddyActions(reply, maxActions = 2) {
         if (!raw || typeof raw !== 'object') continue;
         const kind = raw.action;
         if (!ALLOWED_KINDS.includes(kind)) continue;
-        const payload = raw.payload && typeof raw.payload === 'object'
-            ? Object.fromEntries(Object.entries(raw.payload).filter(([, v]) => typeof v === 'string'))
-            : {};
+        const rawPayload = raw.payload && typeof raw.payload === 'object' ? raw.payload : {};
+        const payload = Object.fromEntries(Object.entries(rawPayload).filter(([, v]) => typeof v === 'string'));
+        if (kind === 'add_task' || kind === 'breakdown') {
+            payload.text = rawPayload.text ?? rawPayload.title ?? rawPayload.name ?? rawPayload.task ?? rawPayload.goal ?? '';
+        }
         const label = typeof raw.label === 'string' && raw.label ? raw.label : kind;
         actions.push({ action: kind, payload, label });
     }
@@ -39,4 +72,5 @@ export function parseBuddyActions(reply, maxActions = 2) {
 
 if (typeof window !== 'undefined') {
     window.parseBuddyActions = parseBuddyActions;
+    window.extractTaskIntent = extractTaskIntent;
 }

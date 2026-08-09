@@ -43,6 +43,8 @@ struct TodoNativeApp: App {
                 .environmentObject(aiViewModel)
                 .environmentObject(languageEnvironment)
                 .onAppear {
+                    NotificationService.setup()
+                    NotificationService.requestAuthorization()
                     Task {
                         await purchaseManager.initialize()
                     }

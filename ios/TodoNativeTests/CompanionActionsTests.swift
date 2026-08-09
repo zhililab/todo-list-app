@@ -36,4 +36,27 @@ final class CompanionActionsTests: XCTestCase {
         XCTAssertEqual(result.actions.count, 1)
         XCTAssertEqual(result.actions[0].kind, "add_task")
     }
+
+    func testExtractTaskIntentChinese() {
+        XCTAssertEqual(CompanionActions.extractTaskIntent("帮我创建待办：明天买牛奶"), "明天买牛奶")
+        XCTAssertEqual(CompanionActions.extractTaskIntent("加个任务 跑步"), "跑步")
+        XCTAssertEqual(CompanionActions.extractTaskIntent("记下：写周报"), "写周报")
+    }
+
+    func testExtractTaskIntentGuardsQuestionAndNonIntent() {
+        XCTAssertNil(CompanionActions.extractTaskIntent("帮我创建待办吗？"))
+        XCTAssertNil(CompanionActions.extractTaskIntent("今天天气怎么样"))
+    }
+
+    func testExtractTaskIntentEnglish() {
+        XCTAssertEqual(CompanionActions.extractTaskIntent("create a task: buy milk"), "buy milk")
+    }
+
+    func testParseNormalizesPayloadText() {
+        let json = #"{"actions":[{"action":"add_task","payload":{"name":"喝水"},"label":"x"}]}"#
+        let result = CompanionActions.parse(json)
+        XCTAssertEqual(result.actions.count, 1)
+        XCTAssertEqual(result.actions[0].payload["text"], "喝水")
+        XCTAssertEqual(result.actions[0].payload["name"], "喝水")
+    }
 }

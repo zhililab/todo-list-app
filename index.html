@@ -65,6 +65,7 @@
                     <h1 data-i18n="appTitle">AI-native Todo</h1>
                 </div>
                 <button class="ghost-btn" id="plan-today" type="button" data-i18n="generateTodayPlan">生成今日计划</button>
+                <button class="ghost-btn" id="notif-toggle" type="button" data-i18n="notifEnable">开启到期提醒</button>
             </header>
 
             <section class="intent-panel">
@@ -85,6 +86,10 @@
                         <option value="学习" data-i18n="taskType.learning">学习</option>
                         <option value="生活" data-i18n="taskType.life">生活</option>
                     </select>
+                    <label class="input-label" for="task-due" id="task-due-label" data-i18n="taskDueLabel">截止</label>
+                    <input type="date" id="task-due">
+                    <label class="input-label" for="task-due-time" id="task-due-time-label" data-i18n="taskDueTimeLabel">时间</label>
+                    <input type="time" id="task-due-time">
                 </div>
             </section>
 
@@ -237,6 +242,7 @@
     <script type="module" src="companion-context.js"></script>
     <script type="module" src="companion-events.js"></script>
     <script type="module" src="companion-actions.js"></script>
+    <script type="module" src="companion-format.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

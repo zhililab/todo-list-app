@@ -10,16 +10,20 @@ struct TaskEditView: View {
     @State private var prompt: String
     @State private var minutes: Int
     @State private var priority: Int
+    @State private var dueDate: Date = Date()
+    @State private var hasDueDate: Bool
 
-    let onSave: (String, String, String, String, Int, Int) -> Void
+    let onSave: (String, String, String, String, Int, Int, Date?) -> Void
 
-    init(item: TodoItem, onSave: @escaping (String, String, String, String, Int, Int) -> Void) {
+    init(item: TodoItem, onSave: @escaping (String, String, String, String, Int, Int, Date?) -> Void) {
         _title = State(initialValue: item.title)
         _context = State(initialValue: item.context)
         _criteria = State(initialValue: item.acceptanceCriteria)
         _prompt = State(initialValue: item.nextPrompt)
         _minutes = State(initialValue: item.estimatedMinutes)
         _priority = State(initialValue: item.priority)
+        _hasDueDate = State(initialValue: item.dueDate != nil)
+        _dueDate = State(initialValue: item.dueDate ?? Date())
         self.onSave = onSave
     }
 
@@ -49,6 +53,16 @@ struct TaskEditView: View {
                     Stepper(Localization.t("tasks.priority", priority), value: $priority, in: 1...5)
                     Stepper(Localization.t("tasks.minutes", minutes), value: $minutes, in: 5...240, step: 5)
                 }
+
+                Section(Localization.t("tasks.dueDate")) {
+                    DatePicker(Localization.t("tasks.dueDate"), selection: $dueDate, displayedComponents: [.date, .hourAndMinute])
+                        .onChange(of: dueDate) { hasDueDate = true }
+                    Button(Localization.t("tasks.clearDue")) {
+                        hasDueDate = false
+                    }
+                    .disabled(!hasDueDate)
+                    .buttonStyle(.borderless)
+                }
             }
             .navigationTitle(Localization.t("edit.title"))
             .navigationBarTitleDisplayMode(.inline)
@@ -58,7 +72,7 @@ struct TaskEditView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(Localization.t("common.save")) {
-                        onSave(trimmedTitle, context, criteria, prompt, minutes, priority)
+                        onSave(trimmedTitle, context, criteria, prompt, minutes, priority, hasDueDate ? dueDate : nil)
                         dismiss()
                     }
                     .disabled(trimmedTitle.isEmpty)

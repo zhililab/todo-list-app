@@ -80,6 +80,9 @@ struct AppBgModifier: ViewModifier {
 
 // web .panel：白底 + 1px 边框 + 柔和阴影 + 18px 圆角
 struct AppCardStyle: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var appeared = false
+
     func body(content: Content) -> some View {
         content
             .padding(AppTheme.Spacing.md)
@@ -92,25 +95,40 @@ struct AppCardStyle: ViewModifier {
             )
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusLg))
             .shadow(color: Color(red: 68/255, green: 77/255, blue: 68/255).opacity(0.11), radius: 16, x: 0, y: 8)
+            .opacity(appeared ? 1 : 0)
+            .onAppear {
+                if reduceMotion {
+                    appeared = true
+                } else {
+                    withAnimation(.easeOut(duration: 0.25)) { appeared = true }
+                }
+            }
     }
 }
 
 // web #add-task / #ai-breakdown：珊瑚红主按钮
 struct PrimaryActionButton: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)
             .foregroundStyle(.white)
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background(Color.brand.opacity(configuration.isPressed ? 0.7 : 1))
+            .background(Color.brand.opacity(configuration.isPressed ? 0.85 : 1))
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusSm))
             .shadow(color: Color.brand.opacity(0.3), radius: 8, y: 4)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.9 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
 // web .ghost-btn：白底细边框
 struct GhostButton: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.subheadline.weight(.medium))
@@ -123,7 +141,9 @@ struct GhostButton: ButtonStyle {
                     .stroke(Color.appLine, lineWidth: 1)
             )
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusSm))
-            .opacity(configuration.isPressed ? 0.7 : 1)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.9 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 

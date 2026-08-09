@@ -40,6 +40,7 @@ final class CompanionViewModel: ObservableObject {
     static let greetingKey = "companion_greeting"
     static let nameKey = "companion_name"
     static let greetingEnabledKey = "companion_greeting_enabled"
+    static let celebratedKey = "companion_celebrated"
 
     private static let maxHistory = 40
 
@@ -76,7 +77,10 @@ final class CompanionViewModel: ObservableObject {
         let reply: String
         if let text = try? await OpenAIService.callOpenAI(promptText: user, instructionText: system) {
             let parsed = CompanionActions.parse(text)
-            let actions = parsed.actions.map { BuddyAction(label: $0.label, kind: $0.kind, payload: $0.payload) }
+            var actions = parsed.actions.map { BuddyAction(label: $0.label, kind: $0.kind, payload: $0.payload) }
+            if actions.isEmpty, let taskText = CompanionActions.extractTaskIntent(trimmed) {
+                actions = [BuddyAction(label: Localization.t("buddy.addTodo"), kind: "add_task", payload: ["text": taskText])]
+            }
             reply = parsed.text
             messages.append(BuddyMessage(role: "assistant", text: parsed.text, actions: actions))
         } else {
@@ -98,21 +102,39 @@ final class CompanionViewModel: ObservableObject {
         saveHistory()
     }
 
-    func runMoments(items: [TodoItem]) {
+    func runMoments(items: [TodoItem], storage: UserDefaults = .standard) {
         let count = CompanionEvents.completedCountToday(in: items)
         let events = CompanionEvents.moments(tasks: items, completedToday: count)
+        let today = Self.todayString()
+        let skipCelebrate = !Self.shouldCelebrate(today: today, storage: storage)
+        var appended = false
         for event in events {
+            if event.type == "celebrate" && skipCelebrate { continue }
             messages.append(BuddyMessage(role: "assistant", text: event.text))
+            appended = true
             if event.type == "nudge", let title = event.taskTitle,
                let task = items.first(where: { $0.title == title }) {
                 CompanionEvents.markNudged(task)
             }
         }
-        if !events.isEmpty { saveHistory() }
+        if appended {
+            if events.contains(where: { $0.type == "celebrate" }) && !skipCelebrate {
+                Self.markCelebrated(today: today, storage: storage)
+            }
+            saveHistory()
+        }
+    }
+
+    static func shouldCelebrate(today: String, storage: UserDefaults = .standard) -> Bool {
+        storage.string(forKey: celebratedKey) != today
+    }
+
+    static func markCelebrated(today: String, storage: UserDefaults = .standard) {
+        storage.set(today, forKey: celebratedKey)
     }
 
     func apply(action: BuddyAction, in vm: TodoViewModel) {
-        let title = action.payload["title"] ?? action.payload["text"] ?? ""
+        let title = action.payload["text"] ?? action.payload["title"] ?? action.payload["name"] ?? action.payload["task"] ?? action.payload["goal"] ?? ""
         switch action.kind {
         case "add_task":
             if !title.isEmpty {

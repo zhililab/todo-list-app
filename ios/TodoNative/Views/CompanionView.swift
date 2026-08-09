@@ -3,6 +3,7 @@ import SwiftUI
 struct CompanionView: View {
     @EnvironmentObject private var vm: TodoViewModel
     @EnvironmentObject private var lang: LanguageEnvironment
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var buddy = CompanionViewModel()
 
     var body: some View {
@@ -23,11 +24,16 @@ struct CompanionView: View {
                                 }
                             }
                             .padding(AppTheme.Spacing.md)
+                            .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: buddy.messages.count)
                         }
                         .onChange(of: buddy.messages.count) {
                             if let last = buddy.messages.last {
-                                withAnimation {
+                                if reduceMotion {
                                     proxy.scrollTo(last.id, anchor: .bottom)
+                                } else {
+                                    withAnimation(.easeOut(duration: 0.25)) {
+                                        proxy.scrollTo(last.id, anchor: .bottom)
+                                    }
                                 }
                             }
                         }
@@ -110,5 +116,13 @@ struct CompanionView: View {
         }
         .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
         .id(message.id)
+        .transition(
+            isUser
+                ? .asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity)
+                : .asymmetric(
+                    insertion: .move(edge: .leading).combined(with: .opacity).combined(with: .scale(scale: 0.92)),
+                    removal: .opacity
+                )
+        )
     }
 }
