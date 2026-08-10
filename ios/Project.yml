@@ -26,7 +26,6 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: "AI Native Todo"
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: true
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UIUserInterfaceStyle: Light
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "用于语音输入待办任务与伙伴聊天，方便你快速捕捉想法。"
         INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "把语音转为文字，用于添加待办任务与伙伴对话。"
     scheme:

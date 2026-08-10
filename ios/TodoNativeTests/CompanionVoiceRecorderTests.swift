@@ -243,6 +243,53 @@ final class CompanionVoiceRecorderTests: XCTestCase {
         XCTAssertEqual(recorder.state, .idle)
     }
 
+    func testDefaultLocaleIsResolvedWhenRecordingStartsAfterLanguageChanges() async {
+        let previousLanguage = UserDefaults.standard.string(forKey: Localization.languageKey)
+        defer {
+            if let previousLanguage {
+                UserDefaults.standard.set(previousLanguage, forKey: Localization.languageKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Localization.languageKey)
+            }
+        }
+        UserDefaults.standard.set("zh", forKey: Localization.languageKey)
+        let runtime = FakeVoiceRuntime()
+        let recorder = CompanionVoiceRecorder(runtime: runtime)
+
+        UserDefaults.standard.set("en", forKey: Localization.languageKey)
+        await recorder.start()
+
+        XCTAssertEqual(runtime.startedLocaleIdentifiers, ["en-US"])
+    }
+
+    func testLateFinalAfterTimeoutCannotLeakIntoRestartedSession() async {
+        let runtime = FakeVoiceRuntime()
+        let recorder = CompanionVoiceRecorder(runtime: runtime, finalizationTimeoutNanoseconds: 5_000_000)
+        let first = VoiceOutput()
+        let second = VoiceOutput()
+        let timedOut = expectation(description: "first session times out")
+        await recorder.start(
+            onFinal: { first.finals.append($0) },
+            onError: {
+                first.errors.append($0)
+                timedOut.fulfill()
+            }
+        )
+        recorder.stop()
+        await fulfillment(of: [timedOut], timeout: 1)
+
+        await recorder.start(onFinal: { second.finals.append($0) })
+        runtime.emit(.final("late first"), session: 0)
+
+        XCTAssertTrue(first.finals.isEmpty)
+        XCTAssertTrue(second.finals.isEmpty)
+        XCTAssertEqual(recorder.state, .recording)
+
+        runtime.emit(.final("current second"), session: 1)
+        XCTAssertEqual(second.finals, ["current second"])
+        XCTAssertEqual(recorder.state, .idle)
+    }
+
 }
 
 @MainActor
@@ -264,6 +311,7 @@ private final class FakeVoiceRuntime: CompanionVoiceRuntime {
     private var eventHandlers: [(@MainActor @Sendable (CompanionVoiceRuntimeEvent) -> Void)] = []
 
     private(set) var calls: [String] = []
+    private(set) var startedLocaleIdentifiers: [String] = []
     private(set) var stopCount = 0
     private(set) var cancelCount = 0
     init(
@@ -307,6 +355,7 @@ private final class FakeVoiceRuntime: CompanionVoiceRuntime {
 
     func start(locale: Locale, onEvent: @escaping @MainActor @Sendable (CompanionVoiceRuntimeEvent) -> Void) throws {
         calls.append("start")
+        startedLocaleIdentifiers.append(locale.identifier)
         eventHandlers.append(onEvent)
     }
 

@@ -98,8 +98,8 @@ struct TodoCardView: View {
                 // web .task-text（完成划线）
                 Text(item.title)
                     .font(.system(size: 17, weight: .medium, design: .rounded))
-                    .foregroundStyle(item.isCompleted ? Color(hex: 0x8E8883) : Color(hex: 0x32302D))
-                    .strikethrough(item.isCompleted, color: Color(hex: 0x8E8883))
+                    .foregroundStyle(item.isCompleted ? Color.appMuted : Color.appText)
+                    .strikethrough(item.isCompleted, color: Color.appMuted)
                     .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: 6) {
@@ -178,7 +178,7 @@ struct TodoCardView: View {
             }
         }
         .padding(AppTheme.Spacing.md)
-        .background(Color.white)
+        .background(Color.appCardBg)
         .contentShape(Rectangle())
         .contextMenu {
             Button {

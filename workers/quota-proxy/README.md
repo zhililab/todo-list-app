@@ -14,7 +14,7 @@ Base URL: `https://todo-quota-proxy.<subdomain>.workers.dev`
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | `/proxy/chat/completions` | 请求头 `X-Device-Id`；OpenAI 格式 body（`model` 强制为 `deepseek-chat`）。无设备头 → `401 missing_device_id`；免费用完 → `402 quota_exceeded(kind=free)`；Pro 当日用完 → `402 quota_exceeded(kind=daily)`；上游非 2xx 原样透传、不消耗配额；成功递增计数后返回上游原文。 |
+| POST | `/proxy/chat/completions` | 请求头 `X-Device-Id`；OpenAI 格式 body（`model` 强制为 `deepseek-v4-flash`）。无设备头 → `401 missing_device_id`；免费用完 → `402 quota_exceeded(kind=free)`；Pro 当日用完 → `402 quota_exceeded(kind=daily)`；上游非 2xx 原样透传、不消耗配额；成功递增计数后返回上游原文。 |
 | GET | `/proxy/quota` | 请求头 `X-Device-Id`。返回 `{"freeUsed":0,"freeLimit":10,"proUsed":0,"proLimit":20,"isPro":false,"today":"YYYY-MM-DD"}` |
 | POST | `/proxy/register-pro` | 请求体 `{"transactionJwt":"<jwsRepresentation>"}`。验签通过 → `200 {"ok":true,"expiry":"<ISO>"}` 并写入 `pro:{deviceId}`；失败 → `401 invalid_jwt` |
 

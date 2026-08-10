@@ -25,7 +25,7 @@ final class CompanionViewModelTests: XCTestCase {
     private func makeCompletedItem(title: String = "完成任务") -> TodoItem {
         let item = TodoItem(title: title)
         item.status = .done
-        item.completedAt = Date().addingTimeInterval(-600)
+        item.completedAt = Date()
         return item
     }
 

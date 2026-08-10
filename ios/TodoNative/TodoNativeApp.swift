@@ -10,6 +10,7 @@ struct TodoNativeApp: App {
     @StateObject private var purchaseManager: PurchaseManager
     @StateObject private var planViewModel: TodoViewModel
     @StateObject private var aiViewModel: AIViewModel
+    @StateObject private var aiBriefingViewModel: AIBriefingViewModel
     @StateObject private var languageEnvironment: LanguageEnvironment
     @StateObject private var notificationService: NotificationService
 
@@ -34,6 +35,7 @@ struct TodoNativeApp: App {
         _purchaseManager = StateObject(wrappedValue: purchase)
         _planViewModel = StateObject(wrappedValue: vm)
         _aiViewModel = StateObject(wrappedValue: ai)
+        _aiBriefingViewModel = StateObject(wrappedValue: AIBriefingViewModel())
         _languageEnvironment = StateObject(wrappedValue: lang)
         _notificationService = StateObject(wrappedValue: notifications)
     }
@@ -45,6 +47,7 @@ struct TodoNativeApp: App {
                 .environmentObject(purchaseManager)
                 .environmentObject(planViewModel)
                 .environmentObject(aiViewModel)
+                .environmentObject(aiBriefingViewModel)
                 .environmentObject(languageEnvironment)
                 .environmentObject(notificationService)
                 .onAppear {

@@ -4,6 +4,34 @@ import Foundation
 @MainActor
 struct AIService {
 
+    static func dailyBrief(
+        items: [TodoItem],
+        health: Int,
+        now: Date = Date(),
+        service: any AIAssistantServing = LiveAIAssistantService()
+    ) async throws -> (AIDailyBriefContent, AIAssistantSource) {
+        try await service.dailyBrief(
+            context: AIAssistantContext(items: items, health: health),
+            now: now
+        )
+    }
+
+    static func workbench(
+        mode: AIWorkbenchMode,
+        goal: String,
+        items: [TodoItem],
+        health: Int,
+        now: Date = Date(),
+        service: any AIAssistantServing = LiveAIAssistantService()
+    ) async throws -> AIWorkbenchResult {
+        try await service.workbench(
+            mode: mode,
+            goal: goal,
+            context: AIAssistantContext(items: items, health: health),
+            now: now
+        )
+    }
+
     // 功能 1：智能拆解（与 web app.js handleBreakdown 保持一致）
     static func breakdown(goal: String, items: [TodoItem] = []) async throws -> String {
         let active = items.filter { !$0.isArchived && !$0.isCompleted }

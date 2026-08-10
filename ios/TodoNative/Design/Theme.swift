@@ -37,6 +37,50 @@ enum AppTheme {
         static let caption = Font.system(.caption, design: .rounded, weight: .medium)
         static let caption2 = Font.system(.caption2, design: .rounded)
     }
+
+    enum Palette {
+        static let appBg = adaptive(light: 0xF6F3EE, dark: 0x101311)
+        static let appBg2 = adaptive(light: 0xE9F1EC, dark: 0x131A16)
+        static let appBgBottom = adaptive(light: 0xF4F4F1, dark: 0x151715)
+        static let appCardBg = adaptive(light: 0xFFFFFF, dark: 0x1D211E)
+        static let appSidebarBg = adaptive(light: 0xFCFAF8, dark: 0x181B19)
+        static let appLine = adaptive(light: 0xEFE4DC, dark: 0x46504A)
+        static let appText = adaptive(light: 0x2A2A2A, dark: 0xF2F4F2)
+        static let appMuted = adaptive(light: 0x7F7A74, dark: 0xB8C0BA)
+        static let brand = adaptive(light: 0xD94F3A, dark: 0xFF7664)
+        static let accentSoft = adaptive(light: 0xFFF0EB, dark: 0x45251F)
+        static let accentBlue = adaptive(light: 0x3B82F6, dark: 0x76A7FF)
+        static let blueSoft = adaptive(light: 0xEEF4FF, dark: 0x172A48)
+        static let success = adaptive(light: 0x1F9D68, dark: 0x61D59D)
+        static let greenSoft = adaptive(light: 0xEEFAF4, dark: 0x16382B)
+        static let warning = adaptive(light: 0xFF8A3D, dark: 0xFFB06B)
+        static let ghostText = adaptive(light: 0x645D57, dark: 0xD2D7D3)
+        static let chipGreenText = adaptive(light: 0x317255, dark: 0x9DE0BF)
+        static let chipGreenBorder = adaptive(light: 0xDCEBE2, dark: 0x356A50)
+        static let chipSourceText = adaptive(light: 0x9A6A1F, dark: 0xFFD58A)
+        static let chipSourceBg = adaptive(light: 0xFFF4D6, dark: 0x3D2D12)
+        static let chipSourceBorder = adaptive(light: 0xEFDCB0, dark: 0x725825)
+        static let buddyUserBubble = adaptive(light: 0xFDF1EA, dark: 0x3B241D)
+        static let buddyBuddyBubble = adaptive(light: 0xFFFFFF, dark: 0x202522)
+        static let buddyBubbleLine = adaptive(light: 0xEFE4DC, dark: 0x46504A)
+
+        private static func adaptive(light: UInt32, dark: UInt32) -> UIColor {
+            UIColor { traits in
+                UIColor(hex: traits.userInterfaceStyle == .dark ? dark : light)
+            }
+        }
+    }
+}
+
+private extension UIColor {
+    convenience init(hex: UInt32) {
+        self.init(
+            red: CGFloat((hex >> 16) & 0xFF) / 255,
+            green: CGFloat((hex >> 8) & 0xFF) / 255,
+            blue: CGFloat(hex & 0xFF) / 255,
+            alpha: 1
+        )
+    }
 }
 
 extension Color {
@@ -53,30 +97,30 @@ extension Color {
 
 // 与 web 端 styles.css :root 配色一致（暖色手帐风）
 extension Color {
-    static let appBg = Color(hex: 0xF6F3EE)
-    static let appBg2 = Color(hex: 0xE9F1EC)
-    static let appBgBottom = Color(hex: 0xF4F4F1)
-    static let appCardBg = Color.white
-    static let appSidebarBg = Color(hex: 0xFCFAF8)
-    static let appLine = Color(hex: 0xEFE4DC)
-    static let appText = Color(hex: 0x2A2A2A)
-    static let appMuted = Color(hex: 0x7F7A74)
-    static let brand = Color(hex: 0xD94F3A)
-    static let accentSoft = Color(hex: 0xFFF0EB)
-    static let accentBlue = Color(hex: 0x3B82F6)
-    static let blueSoft = Color(hex: 0xEEF4FF)
-    static let success = Color(hex: 0x1F9D68)
-    static let greenSoft = Color(hex: 0xEEFAF4)
-    static let warning = Color(hex: 0xFF8A3D)
-    static let ghostText = Color(hex: 0x645D57)
-    static let chipGreenText = Color(hex: 0x317255)
-    static let chipGreenBorder = Color(hex: 0xDCEBE2)
-    static let chipSourceText = Color(hex: 0x9A6A1F)
-    static let chipSourceBg = Color(hex: 0xFFF4D6)
-    static let chipSourceBorder = Color(hex: 0xEFDCB0)
-    static let buddyUserBubble = Color(hex: 0xFDF1EA)
-    static let buddyBuddyBubble = Color(hex: 0xFFFFFF)
-    static let buddyBubbleLine = Color(hex: 0xEFE4DC)
+    static let appBg = Color(uiColor: AppTheme.Palette.appBg)
+    static let appBg2 = Color(uiColor: AppTheme.Palette.appBg2)
+    static let appBgBottom = Color(uiColor: AppTheme.Palette.appBgBottom)
+    static let appCardBg = Color(uiColor: AppTheme.Palette.appCardBg)
+    static let appSidebarBg = Color(uiColor: AppTheme.Palette.appSidebarBg)
+    static let appLine = Color(uiColor: AppTheme.Palette.appLine)
+    static let appText = Color(uiColor: AppTheme.Palette.appText)
+    static let appMuted = Color(uiColor: AppTheme.Palette.appMuted)
+    static let brand = Color(uiColor: AppTheme.Palette.brand)
+    static let accentSoft = Color(uiColor: AppTheme.Palette.accentSoft)
+    static let accentBlue = Color(uiColor: AppTheme.Palette.accentBlue)
+    static let blueSoft = Color(uiColor: AppTheme.Palette.blueSoft)
+    static let success = Color(uiColor: AppTheme.Palette.success)
+    static let greenSoft = Color(uiColor: AppTheme.Palette.greenSoft)
+    static let warning = Color(uiColor: AppTheme.Palette.warning)
+    static let ghostText = Color(uiColor: AppTheme.Palette.ghostText)
+    static let chipGreenText = Color(uiColor: AppTheme.Palette.chipGreenText)
+    static let chipGreenBorder = Color(uiColor: AppTheme.Palette.chipGreenBorder)
+    static let chipSourceText = Color(uiColor: AppTheme.Palette.chipSourceText)
+    static let chipSourceBg = Color(uiColor: AppTheme.Palette.chipSourceBg)
+    static let chipSourceBorder = Color(uiColor: AppTheme.Palette.chipSourceBorder)
+    static let buddyUserBubble = Color(uiColor: AppTheme.Palette.buddyUserBubble)
+    static let buddyBuddyBubble = Color(uiColor: AppTheme.Palette.buddyBuddyBubble)
+    static let buddyBubbleLine = Color(uiColor: AppTheme.Palette.buddyBubbleLine)
 }
 
 // web .app-shell 背景：渐变 + 白面板
@@ -173,7 +217,7 @@ struct TaskRowStyle: ViewModifier {
         content
             .padding(AppTheme.Spacing.md)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.white)
+            .background(Color.appCardBg)
             .overlay(
                 Rectangle()
                     .fill(Color.appLine)

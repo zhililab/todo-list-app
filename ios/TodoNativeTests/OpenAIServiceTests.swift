@@ -1,6 +1,30 @@
 import XCTest
 @testable import TodoNative
 
+private final class OpenAIRouteMockURLProtocol: URLProtocol {
+    nonisolated(unsafe) static var handler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        guard let handler = Self.handler else {
+            client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
+            return
+        }
+        do {
+            let (response, data) = try handler(request)
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: data)
+            client?.urlProtocolDidFinishLoading(self)
+        } catch {
+            client?.urlProtocol(self, didFailWithError: error)
+        }
+    }
+
+    override func stopLoading() {}
+}
+
 @MainActor
 final class OpenAIServiceTests: XCTestCase {
     private let providerKey = "ai_provider"
@@ -102,8 +126,93 @@ final class OpenAIServiceTests: XCTestCase {
         XCTAssertEqual(OpenAIService.customModel(providerID: "deepseek"), "legacy-model")
     }
 
+    func testLegacyConfigMigratesToPersistedProviderEvenWhenAnotherProviderReadsFirst() {
+        UserDefaults.standard.set("deepseek", forKey: providerKey)
+        UserDefaults.standard.set("legacy-model", forKey: modelKey)
+        UserDefaults.standard.set("https://legacy.example/v1", forKey: baseURLKey)
+
+        XCTAssertEqual(OpenAIService.modelSelection(providerID: "openai"), .preset("gpt-4.1-mini"))
+        XCTAssertEqual(OpenAIService.modelSelection(providerID: "deepseek"), .custom)
+        XCTAssertEqual(OpenAIService.customModel(providerID: "deepseek"), "legacy-model")
+        XCTAssertEqual(OpenAIService.customBaseURL(providerID: "deepseek"), "https://legacy.example/v1")
+        XCTAssertEqual(OpenAIService.customModel(providerID: "openai"), "")
+    }
+
+    func testLegacyConfigWithUnknownProviderAndCustomURLMigratesToCustomProvider() {
+        UserDefaults.standard.set("retired-provider", forKey: providerKey)
+        UserDefaults.standard.set("retired-model", forKey: modelKey)
+        UserDefaults.standard.set("https://retired.example/v1", forKey: baseURLKey)
+
+        _ = OpenAIService.modelSelection(providerID: OpenAIService.providerID())
+
+        XCTAssertEqual(OpenAIService.providerID(), "openai")
+        XCTAssertEqual(OpenAIService.customModel(providerID: "custom"), "retired-model")
+        XCTAssertEqual(OpenAIService.customBaseURL(providerID: "custom"), "https://retired.example/v1")
+        XCTAssertEqual(OpenAIService.customModel(providerID: "openai"), "")
+    }
+
     func testManagedQuotaUsesCurrentDeepSeekModel() {
         XCTAssertEqual(OpenAIService.managedModelID, "deepseek-v4-flash")
+    }
+
+    func testRoutedCallAtomicallyReportsDirectRouteWithoutNetwork() async throws {
+        let quotaKey = QuotaClient.baseURLKey
+        let apiKey = OpenAIService.keyStorageKey
+        let oldQuota = UserDefaults.standard.object(forKey: quotaKey)
+        let oldAPIKey = UserDefaults.standard.object(forKey: apiKey)
+        defer {
+            restore(oldQuota, forKey: quotaKey)
+            restore(oldAPIKey, forKey: apiKey)
+        }
+        UserDefaults.standard.removeObject(forKey: quotaKey)
+        UserDefaults.standard.set("", forKey: apiKey)
+
+        let routed = try await OpenAIService.callOpenAIWithSource(
+            promptText: "prompt",
+            instructionText: "instruction"
+        )
+
+        XCTAssertNil(routed.text)
+        XCTAssertEqual(routed.source, .custom)
+    }
+
+    func testRoutedCallAtomicallyReportsManagedRouteFromSuccessfulRequest() async throws {
+        let quotaKey = QuotaClient.baseURLKey
+        let apiKey = OpenAIService.keyStorageKey
+        let oldQuota = UserDefaults.standard.object(forKey: quotaKey)
+        let oldAPIKey = UserDefaults.standard.object(forKey: apiKey)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [OpenAIRouteMockURLProtocol.self]
+        QuotaClient.session = URLSession(configuration: configuration)
+        defer {
+            restore(oldQuota, forKey: quotaKey)
+            restore(oldAPIKey, forKey: apiKey)
+            OpenAIRouteMockURLProtocol.handler = nil
+            QuotaClient.session = .shared
+        }
+        UserDefaults.standard.set("https://quota.test", forKey: quotaKey)
+        UserDefaults.standard.set("", forKey: apiKey)
+        OpenAIRouteMockURLProtocol.handler = { request in
+            XCTAssertEqual(request.url?.path, "/proxy/chat/completions")
+            let data = try JSONSerialization.data(withJSONObject: [
+                "choices": [["message": ["content": "managed response"]]]
+            ])
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, data)
+        }
+
+        let routed = try await OpenAIService.callOpenAIWithSource(
+            promptText: "prompt",
+            instructionText: "instruction"
+        )
+
+        XCTAssertEqual(routed.text, "managed response")
+        XCTAssertEqual(routed.source, .managed)
     }
 
     func testUnknownProviderFallsBackToOpenAI() {
@@ -179,5 +288,13 @@ final class OpenAIServiceTests: XCTestCase {
             "紧凑写法也要能清洗",
             "星号列表项"
         ])
+    }
+
+    private func restore(_ value: Any?, forKey key: String) {
+        if let value {
+            UserDefaults.standard.set(value, forKey: key)
+        } else {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
     }
 }

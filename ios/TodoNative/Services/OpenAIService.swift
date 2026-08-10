@@ -97,23 +97,33 @@ enum OpenAIService {
         "ai_custom_base_url.\(providerID)"
     }
 
-    private static func migrateLegacyIfNeeded(currentProviderID: String) {
+    private static func migrateLegacyIfNeeded() {
         let defaults = UserDefaults.standard
         guard !defaults.bool(forKey: migrationKey) else { return }
         let legacyModel = (defaults.string(forKey: modelKey) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let legacyBaseURL = (defaults.string(forKey: baseURLKey) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let migrationProviderID = legacyMigrationProviderID(defaults: defaults, legacyBaseURL: legacyBaseURL)
         if !legacyModel.isEmpty {
-            defaults.set(AIModelSelection.custom.storedValue, forKey: selectionKey(providerID: currentProviderID))
-            defaults.set(legacyModel, forKey: customModelKey(providerID: currentProviderID))
+            defaults.set(AIModelSelection.custom.storedValue, forKey: selectionKey(providerID: migrationProviderID))
+            defaults.set(legacyModel, forKey: customModelKey(providerID: migrationProviderID))
         }
         if !legacyBaseURL.isEmpty {
-            defaults.set(legacyBaseURL, forKey: customBaseURLKey(providerID: currentProviderID))
+            defaults.set(legacyBaseURL, forKey: customBaseURLKey(providerID: migrationProviderID))
         }
         defaults.set(true, forKey: migrationKey)
     }
 
+    private static func legacyMigrationProviderID(defaults: UserDefaults, legacyBaseURL: String) -> String {
+        if let storedProviderID = defaults.string(forKey: providerKey) {
+            return AIProvider.registry.contains { $0.id == storedProviderID }
+                ? storedProviderID
+                : "custom"
+        }
+        return legacyBaseURL.isEmpty ? defaultProviderID : "custom"
+    }
+
     static func modelSelection(providerID: String) -> AIModelSelection {
-        migrateLegacyIfNeeded(currentProviderID: providerID)
+        migrateLegacyIfNeeded()
         let provider = AIProvider.provider(id: providerID)
         guard provider.id != "custom" else { return .custom }
         guard let stored = UserDefaults.standard.string(forKey: selectionKey(providerID: providerID)),
@@ -131,12 +141,12 @@ enum OpenAIService {
     }
 
     static func customBaseURL(providerID: String) -> String {
-        migrateLegacyIfNeeded(currentProviderID: providerID)
+        migrateLegacyIfNeeded()
         return UserDefaults.standard.string(forKey: customBaseURLKey(providerID: providerID)) ?? ""
     }
 
     static func customModel(providerID: String) -> String {
-        migrateLegacyIfNeeded(currentProviderID: providerID)
+        migrateLegacyIfNeeded()
         return UserDefaults.standard.string(forKey: customModelKey(providerID: providerID)) ?? ""
     }
 
@@ -172,16 +182,32 @@ enum OpenAIService {
     // 与 web app.js callOpenAI 保持一致（OpenAI 兼容 /chat/completions）
     // 适配：无 Key 且配置了额度代理时走 QuotaClient；否则直连原逻辑
     static func callOpenAI(promptText: String, instructionText: String) async throws -> String? {
+        try await callOpenAIWithSource(
+            promptText: promptText,
+            instructionText: instructionText
+        ).text
+    }
+
+    static func callOpenAIWithSource(
+        promptText: String,
+        instructionText: String
+    ) async throws -> (text: String?, source: AIAssistantSource) {
         let messages: [[String: Any]] = [
             ["role": "system", "content": instructionText],
             ["role": "user", "content": promptText]
         ]
-        return try await callChat(messages: messages)
+        return try await callChatWithSource(messages: messages)
     }
 
     // 统一入口：QuotaClient.baseURL 已配置且用户未填 API Key → 走 app 托管额度代理；
     // 否则走原直连逻辑。
     static func callChat(messages: [[String: Any]]) async throws -> String? {
+        try await callChatWithSource(messages: messages).text
+    }
+
+    private static func callChatWithSource(
+        messages: [[String: Any]]
+    ) async throws -> (text: String?, source: AIAssistantSource) {
         if QuotaClient.baseURL != nil && apiKey().isEmpty {
             let body: [String: Any] = [
                 "model": managedModelID,
@@ -189,9 +215,9 @@ enum OpenAIService {
                 "stream": false
             ]
             let json = try await QuotaClient.chat(body: body)
-            return extractOutputText(from: json)
+            return (extractOutputText(from: json), .managed)
         }
-        return try await directCall(messages: messages)
+        return (try await directCall(messages: messages), .custom)
     }
 
     private static func directCall(messages: [[String: Any]]) async throws -> String? {

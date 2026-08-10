@@ -1,5 +1,28 @@
 import SwiftUI
 
+enum DashboardAIBriefTrigger: CaseIterable, Equatable {
+    case firstTodayAppearance
+    case sceneBecameActive
+    case calendarDayChanged
+    case contextChanged
+}
+
+enum DashboardAIBriefAction: Equatable {
+    case loadIfNeeded
+    case markStale
+    case none
+}
+
+enum DashboardAIBriefLifecycle {
+    static func action(for trigger: DashboardAIBriefTrigger) -> DashboardAIBriefAction {
+        return trigger == .contextChanged ? .markStale : .loadIfNeeded
+    }
+
+    static func refreshesTodayPlan(for trigger: DashboardAIBriefTrigger) -> Bool {
+        trigger != .contextChanged
+    }
+}
+
 enum DashboardAccessStatus: Equatable {
     case premium
     case trial(remainingDays: Int)
@@ -21,14 +44,47 @@ enum DashboardAccessStatus: Equatable {
     }
 }
 
-enum DashboardSheet: String, Identifiable {
-    case aiPlan
+struct DashboardAIRoute: Equatable {
+    let mode: AIWorkbenchMode
+    let prefill: String?
+
+    static let defaultBrief = DashboardAIRoute(mode: .todayPlan, prefill: nil)
+
+    static func quickAction(_ action: AIDailyBriefQuickAction) -> DashboardAIRoute {
+        DashboardAIRoute(
+            mode: action.mode,
+            prefill: Localization.t(action.prefillKey)
+        )
+    }
+}
+
+enum DashboardSheet: Identifiable, Equatable {
+    case aiWorkbench(DashboardAIRoute)
     case paywall
+    case aiSettings
 
-    var id: String { rawValue }
+    var id: String {
+        switch self {
+        case .aiWorkbench(let route):
+            return "ai-\(route.mode.rawValue)-\(route.prefill ?? "")"
+        case .paywall:
+            return "paywall"
+        case .aiSettings:
+            return "ai-settings"
+        }
+    }
 
-    static func aiRoute(canUseAIPlan: Bool) -> DashboardSheet {
-        canUseAIPlan ? .aiPlan : .paywall
+    static func aiRoute(route: DashboardAIRoute) -> DashboardSheet {
+        .aiWorkbench(route)
+    }
+
+    static func recoveryRoute(_ recovery: AIAssistantRecovery) -> DashboardSheet {
+        switch recovery {
+        case .manageSubscription:
+            return .paywall
+        case .configureProvider:
+            return .aiSettings
+        }
     }
 
     static func membershipRoute(accessStatus: DashboardAccessStatus) -> DashboardSheet? {
@@ -41,6 +97,8 @@ struct DashboardView: View {
     @EnvironmentObject private var purchaseManager: PurchaseManager
     @EnvironmentObject private var trialManager: TrialManager
     @EnvironmentObject private var lang: LanguageEnvironment
+    @EnvironmentObject private var briefing: AIBriefingViewModel
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var activeSheet: DashboardSheet?
@@ -63,6 +121,17 @@ struct DashboardView: View {
         DashboardAccessStatus.resolve(
             hasPremium: purchaseManager.hasPremium,
             trialState: trialManager.trialState
+        )
+    }
+
+    private var dashboardContextFingerprint: String {
+        AIAssistantContext(items: vm.unarchivedItems, health: vm.healthScore).fingerprint
+    }
+
+    private var briefPresentation: AIDailyBriefPresentation {
+        AIDailyBriefPresentation(
+            state: briefing.briefState,
+            isStale: briefing.isBriefStale
         )
     }
 
@@ -93,6 +162,13 @@ struct DashboardView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                    AIDailyBriefCard(
+                        presentation: briefPresentation,
+                        onOpen: { presentAI(route: .defaultBrief) },
+                        onRefresh: refreshBrief,
+                        onQuickAction: { presentAI(route: .quickAction($0)) },
+                        onRecovery: presentRecovery
+                    )
                     executionSummary
                     todayPlan
                 }
@@ -101,18 +177,43 @@ struct DashboardView: View {
             .navigationTitle(Localization.t("dashboard.title"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(Localization.t("dashboard.aiShort")) {
-                        presentAIPlan()
+                    Button {
+                        presentAI(route: .defaultBrief)
+                    } label: {
+                        Label(Localization.t("ai.brief.toolbar"), systemImage: "sparkles")
                     }
+                    .accessibilityLabel(Localization.t("ai.brief.toolbar"))
                 }
             }
             .sheet(item: $activeSheet) { sheet in
                 switch sheet {
-                case .aiPlan:
-                    AIWorkbenchView()
+                case .aiWorkbench:
+                    AIWorkbenchView(onRecovery: presentWorkbenchRecovery)
+                        .environmentObject(briefing)
+                        .presentationDragIndicator(.visible)
+                        .presentationDetents([.large])
                 case .paywall:
                     PaywallView()
+                case .aiSettings:
+                    SettingsView()
                 }
+            }
+            .task {
+                await handleBriefTrigger(.firstTodayAppearance)
+            }
+            .onChange(of: dashboardContextFingerprint) {
+                Task { await handleBriefTrigger(.contextChanged) }
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                guard newPhase == .active else { return }
+                Task {
+                    await purchaseManager.refreshEntitlements()
+                    await handleBriefTrigger(.sceneBecameActive)
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
+                trialManager.refreshTrialState()
+                Task { await handleBriefTrigger(.calendarDayChanged) }
             }
         }
         .appBg()
@@ -231,7 +332,7 @@ struct DashboardView: View {
                             vm.generatePlan()
                         }
                         Button(Localization.t("dashboard.aiOptimize")) {
-                            presentAIPlan()
+                            presentAI(route: .defaultBrief)
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
@@ -250,7 +351,7 @@ struct DashboardView: View {
                         .multilineTextAlignment(.center)
                         .accessibilityLabel(Localization.t("dashboard.emptyA11y"))
                     Button(Localization.t("dashboard.aiGenerate")) {
-                        presentAIPlan()
+                        presentAI(route: .defaultBrief)
                     }
                     .primaryActionButton()
                     .accessibilityLabel(Localization.t("dashboard.aiGenerateA11y"))
@@ -276,8 +377,47 @@ struct DashboardView: View {
         .appCard()
     }
 
-    private func presentAIPlan() {
-        activeSheet = DashboardSheet.aiRoute(canUseAIPlan: purchaseManager.canUse(.aiPlan))
+    private func presentAI(route: DashboardAIRoute) {
+        present(DashboardSheet.aiRoute(route: route))
+    }
+
+    private func present(_ destination: DashboardSheet) {
+        if case .aiWorkbench(let resolvedRoute) = destination {
+            briefing.open(mode: resolvedRoute.mode, prefill: resolvedRoute.prefill)
+        }
+        activeSheet = destination
+    }
+
+    private func handleBriefTrigger(_ trigger: DashboardAIBriefTrigger) async {
+        if DashboardAIBriefLifecycle.refreshesTodayPlan(for: trigger) {
+            vm.refreshTodayPlan()
+        }
+        switch DashboardAIBriefLifecycle.action(for: trigger) {
+        case .loadIfNeeded:
+            await briefing.appear(items: vm.unarchivedItems, health: vm.healthScore)
+        case .markStale:
+            briefing.contextDidChange(items: vm.unarchivedItems, health: vm.healthScore)
+        case .none:
+            break
+        }
+    }
+
+    private func refreshBrief() {
+        Task {
+            await briefing.refresh(items: vm.unarchivedItems, health: vm.healthScore)
+        }
+    }
+
+    private func presentRecovery(_ recovery: AIAssistantRecovery) {
+        activeSheet = DashboardSheet.recoveryRoute(recovery)
+    }
+
+    private func presentWorkbenchRecovery(_ recovery: AIAssistantRecovery) {
+        activeSheet = nil
+        Task { @MainActor in
+            await Task.yield()
+            activeSheet = DashboardSheet.recoveryRoute(recovery)
+        }
     }
 }
 

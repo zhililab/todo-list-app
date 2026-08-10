@@ -100,10 +100,11 @@ struct TasksView: View {
             // web .add-row
             TextField(Localization.t("tasks.inputPlaceholder"), text: $captureText, axis: .vertical)
                 .font(.system(size: 16, design: .rounded))
+                .foregroundStyle(Color.appText)
                 .lineLimit(2...4)
                 .textFieldStyle(.plain)
                 .padding(12)
-                .background(Color.white)
+                .background(Color.appBg)
                 .overlay(
                     RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusSm)
                         .stroke(Color.appLine, lineWidth: 1)
@@ -114,7 +115,7 @@ struct TasksView: View {
             HStack {
                 Text(Localization.t("tasks.taskType"))
                     .font(.system(size: 12))
-                    .foregroundStyle(Color(hex: 0x8E8177))
+                    .foregroundStyle(Color.appMuted)
 
                 Picker(Localization.t("tasks.taskType"), selection: $type) {
                     ForEach(TaskType.allCases) { taskType in
@@ -174,7 +175,7 @@ struct TasksView: View {
         }
         .padding(AppTheme.Spacing.md)
         .background(
-            Color(hex: 0xFFFDFB)
+            Color.appCardBg
                 .overlay(
                     RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusLg)
                         .stroke(Color.appLine, lineWidth: 1)
@@ -213,7 +214,7 @@ struct TasksView: View {
                 HStack {
                     Text(Localization.t("tasks.type"))
                         .font(.system(size: 13, design: .rounded))
-                        .foregroundStyle(Color(hex: 0x8E8177))
+                        .foregroundStyle(Color.appMuted)
                     Picker(Localization.t("tasks.type"), selection: Binding<TaskType?>(
                         get: { vm.selectedType },
                         set: { vm.selectedType = $0 }
@@ -231,7 +232,7 @@ struct TasksView: View {
                 }
             }
             .padding(AppTheme.Spacing.md)
-            .background(Color.white)
+            .background(Color.appCardBg)
             .overlay(
                 RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusMd)
                     .stroke(Color.appLine, lineWidth: 1)
@@ -258,7 +259,7 @@ struct TasksView: View {
                         ))
                     }
                 }
-                .background(Color.white)
+                .background(Color.appCardBg)
                 .overlay(
                     RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusLg)
                         .stroke(Color.appLine, lineWidth: 1)
@@ -275,12 +276,12 @@ struct TasksView: View {
         } label: {
             Text(filter.localizedName)
                 .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundStyle(active ? .white : Color(hex: 0x6A635E))
+                .foregroundStyle(active ? .white : Color.ghostText)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .background(
                     RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusSm)
-                        .fill(active ? Color.accentBlue : Color.white)
+                        .fill(active ? Color.accentBlue : Color.appCardBg)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusSm)
@@ -302,7 +303,7 @@ struct TasksView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(AppTheme.Spacing.md)
-        .background(Color.white)
+        .background(Color.appCardBg)
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.Spacing.radiusMd)
                 .stroke(Color.appLine, lineWidth: 1)
@@ -330,7 +331,9 @@ struct TasksView: View {
             criteria = ""
             prompt = ""
         } else {
-            withAnimation(listAnimation) { vm.captureNaturalLanguage(text, type: type) }
+            withAnimation(listAnimation) {
+                _ = vm.captureNaturalLanguage(text, type: type)
+            }
         }
         captureText = ""
     }

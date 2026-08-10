@@ -16,23 +16,48 @@ private final class FakeReminderScheduler: ReminderScheduling {
     }
 }
 
+private final class TestClock {
+    var now: Date
+
+    init(now: Date) {
+        self.now = now
+    }
+}
+
 @MainActor
 final class TodoViewModelTests: XCTestCase {
     private var container: ModelContainer!
+    private var defaults: UserDefaults!
+    private var defaultsSuite: String!
 
     override func setUp() {
         super.setUp()
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         container = try! ModelContainer(for: TodoItem.self, configurations: config)
+        defaultsSuite = "TodoViewModelTests.\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: defaultsSuite)!
     }
 
     override func tearDown() {
         container = nil
+        defaults.removePersistentDomain(forName: defaultsSuite)
+        defaults = nil
+        defaultsSuite = nil
         super.tearDown()
     }
 
-    private func makeViewModel(scheduler: FakeReminderScheduler = FakeReminderScheduler()) -> TodoViewModel {
-        TodoViewModel(modelContainer: container, reminderScheduler: scheduler)
+    private func makeViewModel(
+        scheduler: FakeReminderScheduler = FakeReminderScheduler(),
+        calendar: Calendar = .current,
+        now: @escaping () -> Date = Date.init
+    ) -> TodoViewModel {
+        TodoViewModel(
+            modelContainer: container,
+            reminderScheduler: scheduler,
+            defaults: defaults,
+            calendar: calendar,
+            now: now
+        )
     }
 
     func testAddItemAppearsInItems() {
@@ -197,6 +222,109 @@ final class TodoViewModelTests: XCTestCase {
         XCTAssertEqual(vm.todayPlan.first?.title, "计划项")
     }
 
+    func testTodayFocusPersistsOrderAndTakesPriorityOverGeneratedPlan() {
+        let vm = makeViewModel()
+        vm.addItem(title: "高优先级", type: .code, context: "", criteria: "", prompt: "", minutes: 30, priority: 5)
+        vm.addItem(title: "低优先级", type: .personal, context: "", criteria: "", prompt: "", minutes: 15, priority: 1)
+        let high = vm.unarchivedItems.first { $0.title == "高优先级" }!
+        let low = vm.unarchivedItems.first { $0.title == "低优先级" }!
+
+        vm.applyTodayFocus([low.id, high.id])
+
+        XCTAssertEqual(vm.todayPlan.prefix(2).map(\.id), [low.id, high.id])
+        XCTAssertEqual(vm.todayFocusIDs, [low.id, high.id])
+
+        let restored = makeViewModel()
+        XCTAssertEqual(restored.todayPlan.prefix(2).map(\.id), [low.id, high.id])
+        XCTAssertEqual(restored.todayFocusIDs, [low.id, high.id])
+    }
+
+    func testYesterdayFocusDoesNotRestoreInNewViewModelOnNextDay() {
+        let calendar = utcCalendar()
+        let clock = TestClock(now: date(2026, 8, 10, calendar: calendar))
+        let first = makeViewModel(calendar: calendar, now: { clock.now })
+        first.addItem(title: "高优先级", type: .code, context: "", criteria: "", prompt: "", minutes: 30, priority: 5)
+        first.addItem(title: "低优先级", type: .personal, context: "", criteria: "", prompt: "", minutes: 15, priority: 1)
+        let high = first.unarchivedItems.first { $0.title == "高优先级" }!
+        let low = first.unarchivedItems.first { $0.title == "低优先级" }!
+        first.applyTodayFocus([low.id])
+        XCTAssertEqual(defaults.string(forKey: "today_focus_day_key"), "2026-08-10")
+        XCTAssertEqual(first.todayPlan.first?.id, low.id)
+
+        clock.now = date(2026, 8, 11, calendar: calendar)
+        let nextDay = makeViewModel(calendar: calendar, now: { clock.now })
+
+        XCTAssertTrue(nextDay.todayFocusIDs.isEmpty)
+        XCTAssertEqual(nextDay.todayPlan.first?.id, high.id)
+        XCTAssertEqual(defaults.string(forKey: "today_focus_day_key"), "2026-08-11")
+    }
+
+    func testSameViewModelClearsYesterdayFocusWhenTodayPlanRefreshes() {
+        let calendar = utcCalendar()
+        let clock = TestClock(now: date(2026, 8, 10, calendar: calendar))
+        let vm = makeViewModel(calendar: calendar, now: { clock.now })
+        vm.addItem(title: "高优先级", type: .code, context: "", criteria: "", prompt: "", minutes: 30, priority: 5)
+        vm.addItem(title: "低优先级", type: .personal, context: "", criteria: "", prompt: "", minutes: 15, priority: 1)
+        let high = vm.unarchivedItems.first { $0.title == "高优先级" }!
+        let low = vm.unarchivedItems.first { $0.title == "低优先级" }!
+        vm.applyTodayFocus([low.id])
+
+        clock.now = date(2026, 8, 11, calendar: calendar)
+        vm.refreshTodayPlan()
+
+        XCTAssertTrue(vm.todayFocusIDs.isEmpty)
+        XCTAssertEqual(vm.todayPlan.first?.id, high.id)
+    }
+
+    func testTodayFocusDropsCompletedArchivedAndDeletedTasks() {
+        let vm = makeViewModel()
+        for title in ["完成", "归档", "删除"] {
+            vm.addItem(title: title, type: .personal, context: "", criteria: "", prompt: "", minutes: 15, priority: 3)
+        }
+        let completed = vm.unarchivedItems.first { $0.title == "完成" }!
+        let archived = vm.unarchivedItems.first { $0.title == "归档" }!
+        let deleted = vm.unarchivedItems.first { $0.title == "删除" }!
+        vm.applyTodayFocus([completed.id, archived.id, deleted.id])
+
+        vm.updateStatus(completed, status: .done)
+        vm.archive(archived)
+        vm.delete(deleted)
+
+        XCTAssertTrue(vm.todayFocusIDs.isEmpty)
+        XCTAssertTrue(vm.todayPlan.isEmpty)
+    }
+
+    func testApplyingLocalTodayPlanChangesOrderWithoutCreatingDuplicates() async {
+        let vm = makeViewModel()
+        vm.addItem(title: "高优先级", type: .code, context: "", criteria: "", prompt: "", minutes: 30, priority: 5)
+        vm.addItem(title: "低优先级", type: .personal, context: "", criteria: "", prompt: "", minutes: 15, priority: 1)
+        let originalCount = vm.unarchivedItems.count
+        let high = vm.unarchivedItems.first { $0.title == "高优先级" }!
+        let low = vm.unarchivedItems.first { $0.title == "低优先级" }!
+        XCTAssertEqual(vm.todayPlan.first?.id, high.id)
+
+        let application = AIWorkbenchApplication(
+            existingTaskIDs: [low.id],
+            newTasks: []
+        )
+        let appliedCount = vm.applyTodayPlan(application, sourceGoal: "ai-today-plan")
+
+        XCTAssertEqual(appliedCount, 1)
+        XCTAssertEqual(vm.unarchivedItems.count, originalCount)
+        XCTAssertEqual(vm.todayPlan.first?.id, low.id)
+        XCTAssertEqual(vm.todayPlan.filter { $0.title == "低优先级" }.count, 1)
+    }
+
+    private func utcCalendar() -> Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        return calendar
+    }
+
+    private func date(_ year: Int, _ month: Int, _ day: Int, calendar: Calendar) -> Date {
+        calendar.date(from: DateComponents(year: year, month: month, day: day, hour: 12))!
+    }
+
     func testMarkdownExport() {
         let vm = makeViewModel()
         vm.addItem(title: "导出项", type: .code, context: "ctx", criteria: "acc", prompt: "prompt", minutes: 5, priority: 2)
@@ -227,6 +355,53 @@ final class TodoViewModelTests: XCTestCase {
         XCTAssertEqual(scheduler.scheduled.count, 1)
         XCTAssertEqual(scheduler.scheduled.first?.1, "明天准备发布")
         XCTAssertEqual(scheduler.scheduled.first?.2, dueDate)
+    }
+
+    func testStructuredSuggestedTaskImportPreservesMetadataSourceGoalAndReminder() {
+        let scheduler = FakeReminderScheduler()
+        let vm = makeViewModel(scheduler: scheduler)
+        let dueDate = Date(timeIntervalSince1970: 1_786_320_000)
+        let suggestion = AISuggestedTask(
+            id: UUID(),
+            title: "  发布候选版本  ",
+            rationale: "保护交付窗口",
+            estimatedMinutes: 55,
+            priority: 4,
+            dueDate: dueDate
+        )
+
+        vm.importSuggestedTasks([suggestion], type: .code, sourceGoal: "发布 1.0")
+
+        let reconstructed = makeViewModel(scheduler: FakeReminderScheduler())
+        let imported = reconstructed.unarchivedItems.first
+        XCTAssertEqual(imported?.title, "发布候选版本")
+        XCTAssertEqual(imported?.taskType, .code)
+        XCTAssertEqual(imported?.estimatedMinutes, 55)
+        XCTAssertEqual(imported?.priority, 4)
+        XCTAssertEqual(imported?.dueDate, dueDate)
+        XCTAssertEqual(imported?.sourceGoal, "发布 1.0")
+        XCTAssertEqual(scheduler.scheduled.count, 1)
+        XCTAssertEqual(scheduler.scheduled.first?.1, "发布候选版本")
+        XCTAssertEqual(scheduler.scheduled.first?.2, dueDate)
+    }
+
+    func testStructuredSuggestedTaskWithoutDueDateDoesNotInferOneFromTitle() {
+        let scheduler = FakeReminderScheduler()
+        let vm = makeViewModel(scheduler: scheduler)
+        let suggestion = AISuggestedTask(
+            id: UUID(),
+            title: "明天整理发布说明",
+            rationale: "补齐上下文",
+            estimatedMinutes: nil,
+            priority: nil,
+            dueDate: nil
+        )
+
+        vm.importSuggestedTasks([suggestion], sourceGoal: "发布目标")
+
+        XCTAssertNil(vm.unarchivedItems.first?.dueDate)
+        XCTAssertEqual(vm.unarchivedItems.first?.sourceGoal, "发布目标")
+        XCTAssertTrue(scheduler.scheduled.isEmpty)
     }
 
     func testEditingDueDateSchedulesReplacementReminder() {

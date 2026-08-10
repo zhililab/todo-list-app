@@ -14,7 +14,7 @@ final class CompanionVoiceRecorder: ObservableObject {
     @Published private(set) var transcript = ""
 
     private let runtime: any CompanionVoiceRuntime
-    private let locale: Locale
+    private let locale: Locale?
     private let finalizationTimeoutNanoseconds: UInt64
     private var onPartial: (@MainActor @Sendable (String) -> Void)?
     private var onFinal: (@MainActor @Sendable (String) -> Void)?
@@ -31,7 +31,7 @@ final class CompanionVoiceRecorder: ObservableObject {
 
     init(
         runtime: any CompanionVoiceRuntime = SystemCompanionVoiceRuntime(),
-        locale: Locale = CompanionVoiceRecorder.speechLocale,
+        locale: Locale? = nil,
         finalizationTimeoutNanoseconds: UInt64 = 2_000_000_000
     ) {
         self.runtime = runtime
@@ -100,13 +100,14 @@ final class CompanionVoiceRecorder: ObservableObject {
                 throw CompanionVoiceError.microphonePermissionDenied
             }
 
-            guard runtime.isRecognizerAvailable(locale: locale) else {
+            let recordingLocale = locale ?? CompanionVoiceRecorder.speechLocale
+            guard runtime.isRecognizerAvailable(locale: recordingLocale) else {
                 throw CompanionVoiceError.recognizerUnavailable
             }
             guard isActive(currentGeneration, state: .requestingPermission) else { return }
 
             state = .recording
-            try runtime.start(locale: locale) { [weak self] event in
+            try runtime.start(locale: recordingLocale) { [weak self] event in
                 self?.handle(event, generation: currentGeneration)
             }
         } catch let error as CompanionVoiceError {
