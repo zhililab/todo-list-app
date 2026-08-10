@@ -11,3 +11,6 @@ weread_exports/
 # dependencies / build output
 node_modules/
 ios/build/
+
+# isolated Codex worktrees
+.worktrees/
