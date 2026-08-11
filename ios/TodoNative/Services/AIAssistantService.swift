@@ -1,17 +1,24 @@
 import Foundation
 
+enum RemoteAIRequestIntent: Equatable, Sendable {
+    case automatic
+    case manual
+}
+
 @MainActor
 protocol AIAssistantServing {
     func dailyBrief(
         context: AIAssistantContext,
-        now: Date
+        now: Date,
+        intent: RemoteAIRequestIntent
     ) async throws -> (AIDailyBriefContent, AIAssistantSource)
 
     func workbench(
         mode: AIWorkbenchMode,
         goal: String,
         context: AIAssistantContext,
-        now: Date
+        now: Date,
+        intent: RemoteAIRequestIntent
     ) async throws -> AIWorkbenchResult
 }
 
@@ -253,7 +260,8 @@ struct LiveAIAssistantService: AIAssistantServing {
 
     func dailyBrief(
         context: AIAssistantContext,
-        now: Date
+        now: Date,
+        intent: RemoteAIRequestIntent = .manual
     ) async throws -> (AIDailyBriefContent, AIAssistantSource) {
         let fallback = LocalAIAssistantPlanner.dailyBrief(context: context, now: now)
         do {
@@ -266,6 +274,15 @@ struct LiveAIAssistantService: AIAssistantServing {
                 return (fallback, .local)
             }
             return (try AIAssistantDecoder.dailyBrief(from: text), response.source)
+        } catch let error as RemoteAIConsentError {
+            switch error {
+            case .declined:
+                return (fallback, .local)
+            case .needsConsent where intent == .automatic:
+                return (fallback, .local)
+            case .needsConsent:
+                throw error
+            }
         } catch let error as QuotaError {
             if case .quotaExceeded = error {
                 throw error
@@ -280,7 +297,8 @@ struct LiveAIAssistantService: AIAssistantServing {
         mode: AIWorkbenchMode,
         goal: String,
         context: AIAssistantContext,
-        now: Date
+        now: Date,
+        intent: RemoteAIRequestIntent = .manual
     ) async throws -> AIWorkbenchResult {
         let fallback = LocalAIAssistantPlanner.workbench(
             mode: mode,
@@ -302,6 +320,15 @@ struct LiveAIAssistantService: AIAssistantServing {
                 mode: mode,
                 source: response.source
             )
+        } catch let error as RemoteAIConsentError {
+            switch error {
+            case .declined:
+                return fallback
+            case .needsConsent where intent == .automatic:
+                return fallback
+            case .needsConsent:
+                throw error
+            }
         } catch let error as QuotaError {
             if case .quotaExceeded = error {
                 throw error

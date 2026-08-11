@@ -50,6 +50,11 @@ final class AIAssistantServiceTests: XCTestCase {
 
     private let validReviewJSON = #"{"overview":"本周推进稳定","suggestedTasks":[],"sections":[{"id":"progress","title":"进展","body":"完成核心实现"},{"id":"next","title":"下一步","body":"完成验证"},{"id":"prompt","title":"推荐提示","body":"请检查发布风险"}]}"#
 
+    private let consentRoute = AIConsentRoute(
+        identifier: "managed:worker.example:deepseek",
+        recipientName: "Managed AI service and DeepSeek"
+    )
+
     func testDailyBriefDecoderAcceptsControlledJSON() throws {
         let brief = try AIAssistantDecoder.dailyBrief(from: validBriefJSON)
 
@@ -187,6 +192,63 @@ final class AIAssistantServiceTests: XCTestCase {
         } catch {
             XCTFail("Unexpected error: \(error)")
         }
+    }
+
+    func testManualWorkbenchPropagatesNeedsConsentForPresentation() async {
+        let transport = StubTransport(
+            source: .managed,
+            result: .failure(RemoteAIConsentError.needsConsent(consentRoute))
+        )
+        let service = LiveAIAssistantService(transport: transport)
+
+        do {
+            _ = try await service.workbench(
+                mode: .breakdown,
+                goal: "发布版本",
+                context: context,
+                now: Date(),
+                intent: .manual
+            )
+            XCTFail("Expected needsConsent")
+        } catch RemoteAIConsentError.needsConsent(let route) {
+            XCTAssertEqual(route, consentRoute)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testAutomaticBriefUsesLocalPlannerWhenConsentIsNeeded() async throws {
+        let transport = StubTransport(
+            source: .managed,
+            result: .failure(RemoteAIConsentError.needsConsent(consentRoute))
+        )
+        let service = LiveAIAssistantService(transport: transport)
+
+        let (_, source) = try await service.dailyBrief(
+            context: context,
+            now: Date(),
+            intent: .automatic
+        )
+
+        XCTAssertEqual(source, .local)
+    }
+
+    func testDeclinedRemoteAIUsesLocalPlanner() async throws {
+        let transport = StubTransport(
+            source: .custom,
+            result: .failure(RemoteAIConsentError.declined(consentRoute))
+        )
+        let service = LiveAIAssistantService(transport: transport)
+
+        let result = try await service.workbench(
+            mode: .breakdown,
+            goal: "发布版本",
+            context: context,
+            now: Date(),
+            intent: .manual
+        )
+
+        XCTAssertEqual(result.source, .local)
     }
 
     func testInvalidRemoteWorkbenchShapeFallsBackToModeSpecificLocalResult() async throws {

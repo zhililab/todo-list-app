@@ -12,7 +12,8 @@ struct AIService {
     ) async throws -> (AIDailyBriefContent, AIAssistantSource) {
         try await service.dailyBrief(
             context: AIAssistantContext(items: items, health: health),
-            now: now
+            now: now,
+            intent: .manual
         )
     }
 
@@ -28,7 +29,8 @@ struct AIService {
             mode: mode,
             goal: goal,
             context: AIAssistantContext(items: items, health: health),
-            now: now
+            now: now,
+            intent: .manual
         )
     }
 
@@ -87,6 +89,13 @@ struct AIService {
             if let text = try await OpenAIService.callOpenAI(promptText: prompt, instructionText: instruction),
                !text.isEmpty {
                 return text
+            }
+        } catch let error as RemoteAIConsentError {
+            switch error {
+            case .needsConsent:
+                throw error
+            case .declined:
+                return fallback
             }
         } catch let error as QuotaError {
             throw error

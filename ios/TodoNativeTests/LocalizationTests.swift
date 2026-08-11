@@ -138,6 +138,23 @@ final class LocalizationTests: XCTestCase {
         XCTAssertEqual(Localization.t("taskType.personal"), "Personal")
     }
 
+    func testPaywallPromisesOnlyImplementedPremiumBenefits() {
+        let expected = [
+            "zh": "高级权限：AI 今日计划、分析看板、高级导出，一次订阅全部解锁。",
+            "en": "Premium benefits: AI Today Plan, Analytics Dashboard, and Advanced Export."
+        ]
+
+        for (language, copy) in expected {
+            Localization.setLanguage(language)
+            let actual = Localization.t("paywall.perks")
+            XCTAssertEqual(actual, copy)
+            XCTAssertFalse(actual.localizedCaseInsensitiveContains("template"))
+            XCTAssertFalse(actual.localizedCaseInsensitiveContains("theme pack"))
+            XCTAssertFalse(actual.contains("模板"))
+            XCTAssertFalse(actual.contains("主题包"))
+        }
+    }
+
     func testMissingKeyFallsBackToKey() {
         XCTAssertEqual(Localization.t("no.such.key"), "no.such.key")
     }
@@ -164,6 +181,38 @@ final class LocalizationTests: XCTestCase {
             "ai.modelSelectorHint",
             "ai.customModelPlaceholder",
             "ai.customBaseURLHint",
+            "ai.keySaveFailed",
+            "ai.consent.title",
+            "ai.consent.summary",
+            "ai.consent.transmittedTitle",
+            "ai.consent.transmittedContent",
+            "ai.consent.recipientTitle",
+            "ai.consent.recipient",
+            "ai.consent.managedRecipient",
+            "ai.consent.managedRouteDetail",
+            "ai.consent.byokRouteDetail",
+            "ai.consent.declineDetail",
+            "ai.consent.revokeDetail",
+            "ai.consent.privacy",
+            "ai.consent.decline",
+            "ai.consent.continue",
+            "settings.privacy",
+            "settings.terms",
+            "settings.support",
+            "settings.supportID",
+            "settings.supportIDDetail",
+            "settings.copySupportID",
+            "settings.supportIDCopied",
+            "settings.copySupportIDA11yHint",
+            "settings.aiConsentRevoke",
+            "settings.aiConsentRevokeTitle",
+            "settings.aiConsentRevokeDetail",
+            "settings.deleteAIConfiguration",
+            "settings.deleteAIConfigurationTitle",
+            "settings.deleteAIConfigurationDetail",
+            "settings.deleteAIConfigurationConfirm",
+            "settings.deleteAIConfigurationErrorTitle",
+            "settings.deleteAIConfigurationErrorDetail",
             "voice.errorTitle",
             "voice.switchToVoice",
             "voice.switchToKeyboard",

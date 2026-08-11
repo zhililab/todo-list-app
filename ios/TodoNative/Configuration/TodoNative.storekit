@@ -1,0 +1,117 @@
+{
+  "identifier" : "0E510B62-20B6-4668-AB51-E6A83AC7D8F5",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_askToBuyEnabled" : false,
+    "_billingGracePeriodEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_disableDialogs" : false,
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_renewalBillingIssuesEnabled" : false,
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ],
+    "_timeRate" : 0
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "6D7D5B1A",
+      "localizations" : [
+        {
+          "description" : "AI planning, analytics, and advanced export.",
+          "displayName" : "Todo Premium",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "AI 计划、分析看板与高级导出。",
+          "displayName" : "Todo 高级版",
+          "locale" : "zh_CN"
+        }
+      ],
+      "name" : "Todo Premium",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "4.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "82C6FA15",
+          "introductoryOffers" : [
+
+          ],
+          "localizations" : [
+            {
+              "description" : "Premium access billed monthly.",
+              "displayName" : "Monthly Premium",
+              "locale" : "en_US"
+            },
+            {
+              "description" : "按月续订的高级权限。",
+              "displayName" : "高级版月度订阅",
+              "locale" : "zh_CN"
+            }
+          ],
+          "productID" : "com.zhili.todo.premium.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Todo Premium Monthly",
+          "subscriptionGroupID" : "6D7D5B1A",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "39.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "B8E44C21",
+          "introductoryOffers" : [
+
+          ],
+          "localizations" : [
+            {
+              "description" : "Premium access billed yearly.",
+              "displayName" : "Yearly Premium",
+              "locale" : "en_US"
+            },
+            {
+              "description" : "按年续订的高级权限。",
+              "displayName" : "高级版年度订阅",
+              "locale" : "zh_CN"
+            }
+          ],
+          "productID" : "com.zhili.todo.premium.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Todo Premium Yearly",
+          "subscriptionGroupID" : "6D7D5B1A",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 6,
+    "minor" : 3
+  }
+}

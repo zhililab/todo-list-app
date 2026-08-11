@@ -4,6 +4,7 @@ import UIKit
 struct CompanionView: View {
     @EnvironmentObject private var vm: TodoViewModel
     @EnvironmentObject private var lang: LanguageEnvironment
+    @EnvironmentObject private var consentManager: AIConsentManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var buddy = CompanionViewModel()
@@ -60,6 +61,12 @@ struct CompanionView: View {
             .onDisappear { cancelVoiceInput() }
             .onChange(of: scenePhase) {
                 if scenePhase != .active { cancelVoiceInput() }
+            }
+            .onChange(of: consentManager.resolution) {
+                let resolution = consentManager.resolution
+                Task {
+                    _ = await buddy.resolvePendingConsent(resolution)
+                }
             }
         }
         .appBg()

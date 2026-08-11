@@ -25,15 +25,59 @@ private final class OpenAIRouteMockURLProtocol: URLProtocol {
     override func stopLoading() {}
 }
 
+private final class OpenAIFakeKeychainBackend: KeychainPersisting {
+    enum Failure: Error { case write }
+
+    var values: [String: Data] = [:]
+    var shouldFailWrites = false
+
+    func data(service: String, account: String) throws -> Data? {
+        values["\(service)|\(account)"]
+    }
+
+    func setData(_ data: Data, service: String, account: String) throws {
+        if shouldFailWrites { throw Failure.write }
+        values["\(service)|\(account)"] = data
+    }
+
+    func deleteData(service: String, account: String) throws {
+        values.removeValue(forKey: "\(service)|\(account)")
+    }
+}
+
 @MainActor
 final class OpenAIServiceTests: XCTestCase {
     private let providerKey = "ai_provider"
     private let baseURLKey = "ai_base_url"
     private let modelKey = "ai_model"
     private let migrationKey = "ai_provider_scoped_config_migrated"
+    nonisolated(unsafe) private var keychainBackend: OpenAIFakeKeychainBackend!
+    nonisolated(unsafe) private var consentDefaults: UserDefaults!
+    nonisolated(unsafe) private var consentSuiteName = ""
+    nonisolated(unsafe) private var originalCredentialStore: KeychainStore!
+    nonisolated(unsafe) private var originalConsentManager: AIConsentManager!
+    nonisolated(unsafe) private var originalSession: URLSession!
 
     override func setUp() {
         super.setUp()
+        MainActor.assumeIsolated {
+            originalCredentialStore = OpenAIService.credentialStore
+            originalConsentManager = OpenAIService.consentManager
+            originalSession = OpenAIService.session
+            keychainBackend = OpenAIFakeKeychainBackend()
+            OpenAIService.credentialStore = KeychainStore(
+                service: "OpenAIServiceTests.credentials",
+                account: "openai-api-key",
+                backend: keychainBackend
+            )
+            consentSuiteName = "OpenAIServiceTests.consent.\(UUID().uuidString)"
+            consentDefaults = UserDefaults(suiteName: consentSuiteName)!
+            OpenAIService.consentManager = AIConsentManager(
+                consentVersion: "1",
+                storage: consentDefaults
+            )
+        }
+        UserDefaults.standard.removeObject(forKey: OpenAIService.keyStorageKey)
         UserDefaults.standard.removeObject(forKey: providerKey)
         UserDefaults.standard.removeObject(forKey: baseURLKey)
         UserDefaults.standard.removeObject(forKey: modelKey)
@@ -46,6 +90,19 @@ final class OpenAIServiceTests: XCTestCase {
     }
 
     override func tearDown() {
+        UserDefaults.standard.removeObject(forKey: OpenAIService.keyStorageKey)
+        MainActor.assumeIsolated {
+            keychainBackend = nil
+            consentDefaults.removePersistentDomain(forName: consentSuiteName)
+            consentDefaults = nil
+            consentSuiteName = ""
+            OpenAIService.credentialStore = originalCredentialStore
+            OpenAIService.consentManager = originalConsentManager
+            OpenAIService.session = originalSession
+            originalCredentialStore = nil
+            originalConsentManager = nil
+            originalSession = nil
+        }
         UserDefaults.standard.removeObject(forKey: providerKey)
         UserDefaults.standard.removeObject(forKey: baseURLKey)
         UserDefaults.standard.removeObject(forKey: modelKey)
@@ -56,6 +113,144 @@ final class OpenAIServiceTests: XCTestCase {
             UserDefaults.standard.removeObject(forKey: "ai_custom_base_url.\(provider.id)")
         }
         super.tearDown()
+    }
+
+    func testAPIKeyMigratesFromLegacyUserDefaultsIntoInjectedKeychain() throws {
+        UserDefaults.standard.set("  sk-legacy-key  ", forKey: OpenAIService.keyStorageKey)
+
+        XCTAssertEqual(OpenAIService.apiKey(), "sk-legacy-key")
+        XCTAssertNil(UserDefaults.standard.object(forKey: OpenAIService.keyStorageKey))
+        XCTAssertEqual(try OpenAIService.credentialStore.read(), "sk-legacy-key")
+    }
+
+    func testSavingAPIKeyTrimsAndWritesInjectedKeychain() {
+        OpenAIService.saveAPIKey("  sk-new-key\n")
+
+        XCTAssertEqual(OpenAIService.apiKey(), "sk-new-key")
+        XCTAssertNil(UserDefaults.standard.object(forKey: OpenAIService.keyStorageKey))
+    }
+
+    func testFailedAPIKeyWriteReportsFailureAndKeepsPersistedKey() {
+        XCTAssertTrue(OpenAIService.saveAPIKey("sk-existing"))
+        keychainBackend.shouldFailWrites = true
+
+        XCTAssertFalse(OpenAIService.saveAPIKey("sk-unsaved"))
+        XCTAssertEqual(OpenAIService.apiKey(), "sk-existing")
+    }
+
+    func testAIViewModelRestoresPersistedKeyWhenKeychainWriteFails() {
+        XCTAssertTrue(OpenAIService.saveAPIKey("sk-existing"))
+        let viewModel = AIViewModel()
+        keychainBackend.shouldFailWrites = true
+
+        viewModel.apiKey = "sk-unsaved"
+
+        XCTAssertEqual(viewModel.apiKey, "sk-existing")
+        XCTAssertEqual(viewModel.statusMessage, Localization.t("ai.keySaveFailed"))
+    }
+
+    func testDeletingLocalAIConfigurationRemovesKeySettingsAndConsent() throws {
+        OpenAIService.saveAPIKey("sk-delete-me")
+        OpenAIService.saveProviderID("custom")
+        OpenAIService.saveCustomBaseURL("https://delete.test/v1", providerID: "custom")
+        OpenAIService.saveCustomModel("delete-model", providerID: "custom")
+        let route = try XCTUnwrap(OpenAIService.currentConsentRoute())
+        OpenAIService.consentManager.accept(route)
+
+        try OpenAIService.deleteLocalAIConfiguration()
+
+        XCTAssertEqual(OpenAIService.apiKey(), "")
+        XCTAssertEqual(OpenAIService.providerID(), "openai")
+        XCTAssertEqual(OpenAIService.customBaseURL(providerID: "custom"), "")
+        XCTAssertEqual(OpenAIService.customModel(providerID: "custom"), "")
+        XCTAssertFalse(OpenAIService.consentManager.hasStoredConsent)
+    }
+
+    func testDirectTransportIsNotInvokedBeforeCurrentConsent() async throws {
+        OpenAIService.saveAPIKey("sk-direct")
+        OpenAIService.saveProviderID("custom")
+        OpenAIService.saveCustomBaseURL("https://direct.test/v1", providerID: "custom")
+        OpenAIService.saveCustomModel("test-model", providerID: "custom")
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [OpenAIRouteMockURLProtocol.self]
+        OpenAIService.session = URLSession(configuration: configuration)
+        var transportCallCount = 0
+        OpenAIRouteMockURLProtocol.handler = { request in
+            transportCallCount += 1
+            return try Self.successResponse(for: request, text: "remote response")
+        }
+        defer { OpenAIRouteMockURLProtocol.handler = nil }
+
+        let route = try XCTUnwrap(OpenAIService.currentConsentRoute())
+        do {
+            _ = try await OpenAIService.callOpenAIWithSource(
+                promptText: "private task content",
+                instructionText: "instruction"
+            )
+            XCTFail("Expected consent requirement")
+        } catch RemoteAIConsentError.needsConsent(let blockedRoute) {
+            XCTAssertEqual(blockedRoute, route)
+        }
+        XCTAssertEqual(transportCallCount, 0)
+
+        OpenAIService.consentManager.accept(route)
+        let response = try await OpenAIService.callOpenAIWithSource(
+            promptText: "private task content",
+            instructionText: "instruction"
+        )
+        XCTAssertEqual(response.text, "remote response")
+        XCTAssertEqual(transportCallCount, 1)
+    }
+
+    func testBYOKProviderChangeRequiresConsentBeforeNewTransport() async throws {
+        OpenAIService.saveAPIKey("sk-direct")
+        OpenAIService.saveProviderID("openai")
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [OpenAIRouteMockURLProtocol.self]
+        OpenAIService.session = URLSession(configuration: configuration)
+        var transportCallCount = 0
+        OpenAIRouteMockURLProtocol.handler = { request in
+            transportCallCount += 1
+            return try Self.successResponse(for: request, text: "remote response")
+        }
+        defer { OpenAIRouteMockURLProtocol.handler = nil }
+
+        let openAIRoute = try XCTUnwrap(OpenAIService.currentConsentRoute())
+        OpenAIService.consentManager.accept(openAIRoute)
+        _ = try await OpenAIService.callOpenAIWithSource(
+            promptText: "first request",
+            instructionText: "instruction"
+        )
+        XCTAssertEqual(transportCallCount, 1)
+
+        OpenAIService.saveProviderID("deepseek")
+        let deepSeekRoute = try XCTUnwrap(OpenAIService.currentConsentRoute())
+        XCTAssertNotEqual(deepSeekRoute.identifier, openAIRoute.identifier)
+        do {
+            _ = try await OpenAIService.callOpenAIWithSource(
+                promptText: "second private request",
+                instructionText: "instruction"
+            )
+            XCTFail("Expected renewed consent")
+        } catch RemoteAIConsentError.needsConsent(let blockedRoute) {
+            XCTAssertEqual(blockedRoute, deepSeekRoute)
+        }
+        XCTAssertEqual(transportCallCount, 1)
+    }
+
+    func testBuiltInProviderWithOverriddenEndpointUsesActualRecipientAndNewRoute() throws {
+        OpenAIService.saveAPIKey("sk-direct")
+        OpenAIService.saveProviderID("openai")
+        let standardRoute = try XCTUnwrap(OpenAIService.currentConsentRoute())
+
+        OpenAIService.saveCustomBaseURL(
+            "https://compatible.example/v1",
+            providerID: "openai"
+        )
+        let overriddenRoute = try XCTUnwrap(OpenAIService.currentConsentRoute())
+
+        XCTAssertNotEqual(overriddenRoute.identifier, standardRoute.identifier)
+        XCTAssertEqual(overriddenRoute.recipientName, "compatible.example")
     }
 
     func testProviderRegistryContainsWebProviders() {
@@ -157,15 +352,12 @@ final class OpenAIServiceTests: XCTestCase {
 
     func testRoutedCallAtomicallyReportsDirectRouteWithoutNetwork() async throws {
         let quotaKey = QuotaClient.baseURLKey
-        let apiKey = OpenAIService.keyStorageKey
         let oldQuota = UserDefaults.standard.object(forKey: quotaKey)
-        let oldAPIKey = UserDefaults.standard.object(forKey: apiKey)
         defer {
             restore(oldQuota, forKey: quotaKey)
-            restore(oldAPIKey, forKey: apiKey)
         }
         UserDefaults.standard.removeObject(forKey: quotaKey)
-        UserDefaults.standard.set("", forKey: apiKey)
+        OpenAIService.saveAPIKey("")
 
         let routed = try await OpenAIService.callOpenAIWithSource(
             promptText: "prompt",
@@ -178,20 +370,20 @@ final class OpenAIServiceTests: XCTestCase {
 
     func testRoutedCallAtomicallyReportsManagedRouteFromSuccessfulRequest() async throws {
         let quotaKey = QuotaClient.baseURLKey
-        let apiKey = OpenAIService.keyStorageKey
         let oldQuota = UserDefaults.standard.object(forKey: quotaKey)
-        let oldAPIKey = UserDefaults.standard.object(forKey: apiKey)
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [OpenAIRouteMockURLProtocol.self]
         QuotaClient.session = URLSession(configuration: configuration)
         defer {
             restore(oldQuota, forKey: quotaKey)
-            restore(oldAPIKey, forKey: apiKey)
             OpenAIRouteMockURLProtocol.handler = nil
             QuotaClient.session = .shared
         }
         UserDefaults.standard.set("https://quota.test", forKey: quotaKey)
-        UserDefaults.standard.set("", forKey: apiKey)
+        OpenAIService.saveAPIKey("")
+        if let route = OpenAIService.currentConsentRoute() {
+            OpenAIService.consentManager.accept(route)
+        }
         OpenAIRouteMockURLProtocol.handler = { request in
             XCTAssertEqual(request.url?.path, "/proxy/chat/completions")
             let data = try JSONSerialization.data(withJSONObject: [
@@ -296,5 +488,21 @@ final class OpenAIServiceTests: XCTestCase {
         } else {
             UserDefaults.standard.removeObject(forKey: key)
         }
+    }
+
+    private static func successResponse(
+        for request: URLRequest,
+        text: String
+    ) throws -> (HTTPURLResponse, Data) {
+        let data = try JSONSerialization.data(withJSONObject: [
+            "choices": [["message": ["content": text]]]
+        ])
+        let response = HTTPURLResponse(
+            url: request.url!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        return (response, data)
     }
 }

@@ -58,22 +58,58 @@ struct AIProvider: Identifiable, Equatable {
     }
 }
 
+@MainActor
 enum OpenAIService {
     private static let defaultProviderID = "openai"
-    static let managedModelID = "deepseek-v4-flash"
+    nonisolated static let managedModelID = "deepseek-v4-flash"
 
-    static let providerKey = "ai_provider"
-    static let baseURLKey = "ai_base_url"
-    static let modelKey = "ai_model"
-    static let keyStorageKey = "openai_api_key"
-    static let migrationKey = "ai_provider_scoped_config_migrated"
+    nonisolated static let providerKey = "ai_provider"
+    nonisolated static let baseURLKey = "ai_base_url"
+    nonisolated static let modelKey = "ai_model"
+    nonisolated static let keyStorageKey = "openai_api_key"
+    nonisolated static let migrationKey = "ai_provider_scoped_config_migrated"
+    static var credentialStore = KeychainStore()
+    static var consentManager = AIConsentManager()
+    static var session: URLSession = .shared
 
     static func apiKey() -> String {
-        UserDefaults.standard.string(forKey: keyStorageKey) ?? ""
+        do {
+            return try credentialStore.readMigratingLegacyValue(
+                from: .standard,
+                legacyKey: keyStorageKey
+            )
+        } catch {
+            return (try? credentialStore.read()) ?? ""
+        }
     }
 
-    static func saveAPIKey(_ key: String) {
-        UserDefaults.standard.set(key.trimmingCharacters(in: .whitespacesAndNewlines), forKey: keyStorageKey)
+    @discardableResult
+    static func saveAPIKey(_ key: String) -> Bool {
+        do {
+            try credentialStore.write(key)
+            UserDefaults.standard.removeObject(forKey: keyStorageKey)
+            return true
+        } catch {
+            // Keep any legacy value intact unless the Keychain operation succeeds.
+            return false
+        }
+    }
+
+    static func deleteLocalAIConfiguration() throws {
+        try credentialStore.delete()
+
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: keyStorageKey)
+        defaults.removeObject(forKey: providerKey)
+        defaults.removeObject(forKey: baseURLKey)
+        defaults.removeObject(forKey: modelKey)
+        defaults.removeObject(forKey: migrationKey)
+        for provider in AIProvider.registry {
+            defaults.removeObject(forKey: selectionKey(providerID: provider.id))
+            defaults.removeObject(forKey: customModelKey(providerID: provider.id))
+            defaults.removeObject(forKey: customBaseURLKey(providerID: provider.id))
+        }
+        consentManager.revoke()
     }
 
     static func providerID() -> String {
@@ -179,6 +215,34 @@ enum OpenAIService {
         return (baseURL, model)
     }
 
+    static func currentConsentRoute() -> AIConsentRoute? {
+        let key = apiKey().trimmingCharacters(in: .whitespacesAndNewlines)
+        if !key.isEmpty {
+            let provider = AIProvider.provider(id: providerID())
+            let host = URL(string: activeConfig().baseURL)?.host?.lowercased()
+            let providerHost = URL(string: provider.baseURL)?.host?.lowercased()
+            let routeSuffix = "\(provider.id):\(host ?? "unknown")"
+            let recipient = provider.id == "custom" || host != providerHost
+                ? (host ?? provider.name)
+                : provider.name
+            return AIConsentRoute(
+                identifier: "byok:\(routeSuffix)",
+                recipientName: recipient,
+                kind: .bringYourOwnKey
+            )
+        }
+
+        guard let managedBaseURL = QuotaClient.baseURL,
+              let host = URL(string: managedBaseURL)?.host?.lowercased() else {
+            return nil
+        }
+        return AIConsentRoute(
+            identifier: "managed:\(host):deepseek",
+            recipientName: host,
+            kind: .managed
+        )
+    }
+
     // 与 web app.js callOpenAI 保持一致（OpenAI 兼容 /chat/completions）
     // 适配：无 Key 且配置了额度代理时走 QuotaClient；否则直连原逻辑
     static func callOpenAI(promptText: String, instructionText: String) async throws -> String? {
@@ -209,15 +273,25 @@ enum OpenAIService {
         messages: [[String: Any]]
     ) async throws -> (text: String?, source: AIAssistantSource) {
         if QuotaClient.baseURL != nil && apiKey().isEmpty {
+            guard let route = currentConsentRoute() else {
+                throw QuotaError.missingBaseURL
+            }
             let body: [String: Any] = [
                 "model": managedModelID,
                 "messages": messages,
                 "stream": false
             ]
-            let json = try await QuotaClient.chat(body: body)
-            return (extractOutputText(from: json), .managed)
+            return try await RemoteAIGate(consentManager: consentManager).perform(for: route) {
+                let json = try await QuotaClient.chat(body: body)
+                return (extractOutputText(from: json), .managed)
+            }
         }
-        return (try await directCall(messages: messages), .custom)
+        guard let route = currentConsentRoute() else {
+            return (nil, .custom)
+        }
+        return try await RemoteAIGate(consentManager: consentManager).perform(for: route) {
+            (try await directCall(messages: messages), .custom)
+        }
     }
 
     private static func directCall(messages: [[String: Any]]) async throws -> String? {
@@ -244,7 +318,7 @@ enum OpenAIService {
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             let message = String(data: data, encoding: .utf8) ?? ""

@@ -18,6 +18,14 @@ final class TrialManagerTests: XCTestCase {
         XCTAssertEqual(defaults.object(forKey: "todo_app_trial_start_date") as? Double, referenceDate.timeIntervalSince1970)
     }
 
+    func testSevenDayTrialIsExplicitlyDeviceLocalExperience() {
+        let defaults = makeDefaults()
+        let manager = TrialManager(defaults: defaults, now: { self.referenceDate })
+
+        XCTAssertTrue(manager.isTrialActive, "This is a device-local feature access window, not a StoreKit offer")
+        XCTAssertEqual(manager.remainingDays, 7)
+    }
+
     func testTrialExpiresAfterSevenDays() {
         let defaults = makeDefaults()
         defaults.set(referenceDate.timeIntervalSince1970 - 8 * 86400, forKey: "todo_app_trial_start_date")

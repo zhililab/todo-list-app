@@ -11,10 +11,16 @@ struct TodoNativeApp: App {
     @StateObject private var planViewModel: TodoViewModel
     @StateObject private var aiViewModel: AIViewModel
     @StateObject private var aiBriefingViewModel: AIBriefingViewModel
+    @StateObject private var aiConsentManager: AIConsentManager
     @StateObject private var languageEnvironment: LanguageEnvironment
     @StateObject private var notificationService: NotificationService
 
     init() {
+        let configuration = AppConfiguration()
+        QuotaClient.configure(with: configuration)
+        let consent = AIConsentManager(configuration: configuration)
+        OpenAIService.consentManager = consent
+
         do {
             container = try ModelContainer(
                 for: TodoItem.self,
@@ -35,7 +41,10 @@ struct TodoNativeApp: App {
         _purchaseManager = StateObject(wrappedValue: purchase)
         _planViewModel = StateObject(wrappedValue: vm)
         _aiViewModel = StateObject(wrappedValue: ai)
-        _aiBriefingViewModel = StateObject(wrappedValue: AIBriefingViewModel())
+        _aiBriefingViewModel = StateObject(
+            wrappedValue: AIBriefingViewModel(consentManager: consent)
+        )
+        _aiConsentManager = StateObject(wrappedValue: consent)
         _languageEnvironment = StateObject(wrappedValue: lang)
         _notificationService = StateObject(wrappedValue: notifications)
     }
@@ -48,6 +57,7 @@ struct TodoNativeApp: App {
                 .environmentObject(planViewModel)
                 .environmentObject(aiViewModel)
                 .environmentObject(aiBriefingViewModel)
+                .environmentObject(aiConsentManager)
                 .environmentObject(languageEnvironment)
                 .environmentObject(notificationService)
                 .onAppear {
@@ -68,6 +78,25 @@ struct TodoNativeApp: App {
                             planViewModel.restoreDueReminders()
                         }
                     }
+                }
+                .onChange(of: aiConsentManager.resolution) {
+                    let resolution = aiConsentManager.resolution
+                    Task {
+                        await aiBriefingViewModel.resolvePendingConsent(resolution)
+                    }
+                }
+                .fullScreenCover(
+                    item: Binding(
+                        get: { aiConsentManager.pendingRoute },
+                        set: { _ in }
+                    )
+                ) { route in
+                    AIConsentView(
+                        route: route,
+                        privacyPolicyURL: AppConfiguration().privacyPolicyURL,
+                        onDecline: { aiConsentManager.declinePendingConsent() },
+                        onContinue: { aiConsentManager.acceptPendingConsent() }
+                    )
                 }
         }
         .modelContainer(container)

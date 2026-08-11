@@ -2,6 +2,9 @@ name: TodoNative
 options:
   createIntermediateGroups: true
 
+fileGroups:
+  - TodoNative/Configuration/TodoNative.storekit
+
 settings:
   base:
     SWIFT_VERSION: "5.10"
@@ -16,19 +19,43 @@ targets:
     platform: iOS
     type: application
     deploymentTarget: "17.0"
+    info:
+      path: TodoNative/Info.plist
+      properties:
+        CFBundleDisplayName: "AI Native Todo"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        NSMicrophoneUsageDescription: "Use the microphone to dictate tasks and messages to your AI companion."
+        NSSpeechRecognitionUsageDescription: "Convert your speech to text for tasks and conversations with your AI companion."
+        AIConsentVersion: "1"
+        PrivacyPolicyURL: "https://todo-list-app.zhili1993.chatgpt.site/privacy.html"
+        TermsOfUseURL: "https://todo-list-app.zhili1993.chatgpt.site/terms.html"
+        SupportURL: "https://todo-list-app.zhili1993.chatgpt.site/support.html"
+        UIApplicationSupportsIndirectInputEvents: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UILaunchScreen: {}
     sources:
       - path: TodoNative
+        excludes:
+          - Configuration/TodoNative.storekit
     resources:
       - path: TodoNative/Assets.xcassets
+      - path: TodoNative/PrivacyInfo.xcprivacy
+      - path: TodoNative/Resources
     settings:
       base:
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: "AI Native Todo"
-        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: true
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_NSMicrophoneUsageDescription: "用于语音输入待办任务与伙伴聊天，方便你快速捕捉想法。"
-        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "把语音转为文字，用于添加待办任务与伙伴对话。"
+        GENERATE_INFOPLIST_FILE: NO
     scheme:
+      storeKitConfiguration: TodoNative/Configuration/TodoNative.storekit
       testTargets:
         - TodoNativeTests
 

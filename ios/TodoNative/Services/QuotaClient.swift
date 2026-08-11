@@ -39,15 +39,40 @@ enum QuotaError: LocalizedError, Sendable {
     }
 }
 
+@MainActor
 enum QuotaClient {
-    static let baseURLKey = "quota_base_url"
+    static let baseURLKey = AppConfiguration.debugManagedAIBaseURLKey
     static let deviceIDKey = "device_id"
 
     // 测试注入口：默认共享会话
-    nonisolated(unsafe) static var session: URLSession = .shared
+    static var session: URLSession = .shared
+    private static var appConfiguration = AppConfiguration()
+
+#if DEBUG
+    // 单元测试可绕过 Bundle / UserDefaults，直接验证请求路由。
+    static var testBaseURLOverride: URL?
+#endif
+
+    static func configure(with configuration: AppConfiguration) {
+        appConfiguration = configuration
+    }
 
     static var baseURL: String? {
-        UserDefaults.standard.string(forKey: baseURLKey)
+        resolvedBaseURL?.absoluteString
+    }
+
+    static var managedServiceAvailability: ManagedAIAvailability {
+#if DEBUG
+        if let testBaseURLOverride {
+            return .available(testBaseURLOverride)
+        }
+#endif
+        return appConfiguration.managedAIAvailability
+    }
+
+    private static var resolvedBaseURL: URL? {
+        guard case .available(let url) = managedServiceAvailability else { return nil }
+        return url
     }
 
     static var deviceID: String {
@@ -75,9 +100,10 @@ enum QuotaClient {
     }
 
     private static func send(path: String, method: String, body: [String: Any]?) async throws -> [String: Any] {
-        guard let base = baseURL,
-              !base.isEmpty,
-              let url = URL(string: "\(base.hasSuffix("/") ? String(base.dropLast()) : base)\(path)") else {
+        guard let base = resolvedBaseURL,
+              let url = URL(
+                string: "\(base.absoluteString.hasSuffix("/") ? String(base.absoluteString.dropLast()) : base.absoluteString)\(path)"
+              ) else {
             throw QuotaError.missingBaseURL
         }
 
