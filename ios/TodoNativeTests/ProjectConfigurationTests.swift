@@ -50,6 +50,13 @@ final class ProjectConfigurationTests: XCTestCase {
         XCTAssertEqual(Bundle.main.object(forInfoDictionaryKey: "AIConsentVersion") as? String, "1")
     }
 
+    func testCompiledTargetUsesVerifiedManagedAIEndpoint() {
+        XCTAssertEqual(
+            Bundle.main.object(forInfoDictionaryKey: "ManagedAIBaseURL") as? String,
+            "https://todo-quota-proxy.todo-quota-proxy.workers.dev"
+        )
+    }
+
     func testReleaseConfigurationAcceptsOnlyHTTPSManagedEndpoints() {
         let available = AppConfiguration(
             infoDictionary: ["ManagedAIBaseURL": "https://quota.example/v1"],

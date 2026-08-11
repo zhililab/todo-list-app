@@ -28,6 +28,7 @@ targets:
         NSMicrophoneUsageDescription: "Use the microphone to dictate tasks and messages to your AI companion."
         NSSpeechRecognitionUsageDescription: "Convert your speech to text for tasks and conversations with your AI companion."
         AIConsentVersion: "1"
+        ManagedAIBaseURL: "https://todo-quota-proxy.todo-quota-proxy.workers.dev"
         PrivacyPolicyURL: "https://todo-list-app.zhili1993.chatgpt.site/privacy.html"
         TermsOfUseURL: "https://todo-list-app.zhili1993.chatgpt.site/terms.html"
         SupportURL: "https://todo-list-app.zhili1993.chatgpt.site/support.html"

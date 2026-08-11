@@ -22,6 +22,8 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ManagedAIBaseURL</key>
+	<string>https://todo-quota-proxy.todo-quota-proxy.workers.dev</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Use the microphone to dictate tasks and messages to your AI companion.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
