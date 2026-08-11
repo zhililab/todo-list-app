@@ -73,6 +73,55 @@ final class AIBriefingViewModelTests: XCTestCase {
         XCTAssertEqual(service.dailyBriefCalls.count, 2)
     }
 
+    func testAutomaticBriefAndManualRefreshUseDistinctRemoteIntents() async {
+        let service = ImmediateAssistantService()
+        let vm = AIBriefingViewModel(
+            service: service,
+            cache: MemoryBriefCache(),
+            attemptTracker: MemoryBriefAttemptTracker()
+        )
+
+        await vm.appear(items: [], health: 50, now: now)
+        await vm.refresh(items: [], health: 50, now: now.addingTimeInterval(60))
+
+        XCTAssertEqual(service.dailyBriefIntents, [.automatic, .manual])
+    }
+
+    func testManualWorkbenchNeedsConsentPresentsAndRetainsRequestForResolutionRetry() async {
+        let service = ImmediateAssistantService()
+        let route = AIConsentRoute(
+            identifier: "managed:worker.example:deepseek",
+            recipientName: "Managed AI service and DeepSeek"
+        )
+        service.workbenchError = RemoteAIConsentError.needsConsent(route)
+        let consent = AIConsentManager(
+            consentVersion: "1",
+            storage: UserDefaults(suiteName: "AIBriefingViewModelTests.consent.\(UUID().uuidString)")!
+        )
+        let vm = AIBriefingViewModel(
+            service: service,
+            cache: MemoryBriefCache(),
+            attemptTracker: MemoryBriefAttemptTracker(),
+            consentManager: consent
+        )
+        vm.goal = "发布版本"
+
+        await vm.runWorkbench(items: [], health: 50, now: now)
+
+        XCTAssertEqual(consent.pendingRoute, route)
+        XCTAssertEqual(service.workbenchCalls.count, 1)
+        XCTAssertEqual(vm.workbenchState, .idle)
+
+        service.workbenchError = nil
+        consent.acceptPendingConsent(at: now)
+        await vm.resolvePendingConsent(consent.resolution)
+
+        XCTAssertEqual(service.workbenchCalls.count, 2)
+        guard case .result = vm.workbenchState else {
+            return XCTFail("Expected retained workbench request to retry")
+        }
+    }
+
     func testTodayCacheWinsWithoutCallingService() async {
         let service = ImmediateAssistantService()
         let cache = MemoryBriefCache()
@@ -695,6 +744,7 @@ final class AIBriefingViewModelTests: XCTestCase {
 private final class ImmediateAssistantService: AIAssistantServing {
     private(set) var dailyBriefCalls: [(AIAssistantContext, Date)] = []
     private(set) var workbenchCalls: [(AIWorkbenchMode, String, AIAssistantContext, Date)] = []
+    private(set) var dailyBriefIntents: [RemoteAIRequestIntent] = []
     var dailyBriefError: Error?
     var workbenchError: Error?
     var dailyBriefContent = AIDailyBriefContent(
@@ -711,9 +761,11 @@ private final class ImmediateAssistantService: AIAssistantServing {
 
     func dailyBrief(
         context: AIAssistantContext,
-        now: Date
+        now: Date,
+        intent: RemoteAIRequestIntent
     ) async throws -> (AIDailyBriefContent, AIAssistantSource) {
         dailyBriefCalls.append((context, now))
+        dailyBriefIntents.append(intent)
         if let dailyBriefError { throw dailyBriefError }
         return (dailyBriefContent, .managed)
     }
@@ -722,7 +774,8 @@ private final class ImmediateAssistantService: AIAssistantServing {
         mode: AIWorkbenchMode,
         goal: String,
         context: AIAssistantContext,
-        now: Date
+        now: Date,
+        intent: RemoteAIRequestIntent
     ) async throws -> AIWorkbenchResult {
         workbenchCalls.append((mode, goal, context, now))
         if let workbenchError { throw workbenchError }
@@ -742,7 +795,8 @@ private final class ControlledAssistantService: AIAssistantServing {
 
     func dailyBrief(
         context: AIAssistantContext,
-        now: Date
+        now: Date,
+        intent: RemoteAIRequestIntent
     ) async throws -> (AIDailyBriefContent, AIAssistantSource) {
         dailyBriefCalls.append((context, now))
         resumeSatisfiedDailyCallWaiters()
@@ -755,7 +809,8 @@ private final class ControlledAssistantService: AIAssistantServing {
         mode: AIWorkbenchMode,
         goal: String,
         context: AIAssistantContext,
-        now: Date
+        now: Date,
+        intent: RemoteAIRequestIntent
     ) async throws -> AIWorkbenchResult {
         workbenchCalls.append((mode, goal, context, now))
         resumeSatisfiedWorkbenchCallWaiters()
@@ -840,7 +895,8 @@ private final class CancellationAwareAssistantService: AIAssistantServing {
 
     func dailyBrief(
         context: AIAssistantContext,
-        now: Date
+        now: Date,
+        intent: RemoteAIRequestIntent
     ) async throws -> (AIDailyBriefContent, AIAssistantSource) {
         dailyBriefCalls += 1
         resumeSatisfiedDailyCallWaiters()
@@ -857,7 +913,8 @@ private final class CancellationAwareAssistantService: AIAssistantServing {
         mode: AIWorkbenchMode,
         goal: String,
         context: AIAssistantContext,
-        now: Date
+        now: Date,
+        intent: RemoteAIRequestIntent
     ) async throws -> AIWorkbenchResult {
         workbenchCalls += 1
         resumeSatisfiedWorkbenchCallWaiters()

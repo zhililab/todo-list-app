@@ -1,0 +1,7 @@
+[app_store_signer]
+basicConstraints = critical, CA:false
+keyUsage = critical, digitalSignature
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid, issuer
+1.2.840.113635.100.6.11.1 = critical, DER:05:00
+1.2.3.4.5.6.7.8.1 = critical, DER:05:00

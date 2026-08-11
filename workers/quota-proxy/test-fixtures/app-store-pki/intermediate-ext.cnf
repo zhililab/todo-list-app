@@ -1,0 +1,14 @@
+[req]
+distinguished_name = dn
+prompt = no
+
+[dn]
+CN = Todo App Store Test WWDR Intermediate
+O = Test Fixtures Only
+
+[wwdr_ca]
+basicConstraints = critical, CA:true, pathlen:0
+keyUsage = critical, keyCertSign, cRLSign
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid, issuer
+1.2.840.113635.100.6.2.1 = critical, DER:05:00

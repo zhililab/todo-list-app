@@ -42,6 +42,8 @@ final class QuotaClientTests: XCTestCase {
         config.protocolClasses = [MockURLProtocol.self]
         mockSession = URLSession(configuration: config)
         QuotaClient.session = mockSession
+        QuotaClient.testBaseURLOverride = nil
+        QuotaClient.configure(with: AppConfiguration(infoDictionary: [:], buildMode: .release))
     }
 
     override func tearDown() {
@@ -49,6 +51,8 @@ final class QuotaClientTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: deviceIDKey)
         MockURLProtocol.handler = nil
         QuotaClient.session = .shared
+        QuotaClient.testBaseURLOverride = nil
+        QuotaClient.configure(with: AppConfiguration())
         super.tearDown()
     }
 
@@ -60,6 +64,8 @@ final class QuotaClientTests: XCTestCase {
     }
 
     func testMissingBaseURLThrows() async {
+        UserDefaults.standard.set("https://user-defaults-must-not-route.example", forKey: baseURLKey)
+
         do {
             _ = try await QuotaClient.quota()
             XCTFail("should throw")
@@ -70,8 +76,29 @@ final class QuotaClientTests: XCTestCase {
         }
     }
 
+    func testManagedRegistrationAvailabilityIsTypedWhenEndpointIsMissing() {
+        XCTAssertEqual(
+            QuotaClient.managedServiceAvailability,
+            .unavailable(.missingEndpoint)
+        )
+    }
+
+    func testManagedRegistrationAvailabilityUsesDebugEndpointOverride() {
+        let endpoint = URL(string: "https://quota.test")!
+        QuotaClient.testBaseURLOverride = endpoint
+
+        XCTAssertEqual(QuotaClient.managedServiceAvailability, .available(endpoint))
+    }
+
+    func testDebugConfigurationUsesValidUserDefaultsOverride() {
+        UserDefaults.standard.set("https://debug-quota.test", forKey: baseURLKey)
+        QuotaClient.configure(with: AppConfiguration(infoDictionary: [:], buildMode: .debug))
+
+        XCTAssertEqual(QuotaClient.baseURL, "https://debug-quota.test")
+    }
+
     func testQuotaSuccessDecodesSnapshot() async throws {
-        UserDefaults.standard.set("https://quota.test", forKey: baseURLKey)
+        QuotaClient.testBaseURLOverride = URL(string: "https://quota.test")
         MockURLProtocol.handler = { request in
             XCTAssertEqual(request.url?.path, "/proxy/quota")
             XCTAssertEqual(request.value(forHTTPHeaderField: "X-Device-Id"), QuotaClient.deviceID)
@@ -89,7 +116,7 @@ final class QuotaClientTests: XCTestCase {
     }
 
     func testQuotaExceededFree402() async {
-        UserDefaults.standard.set("https://quota.test", forKey: baseURLKey)
+        QuotaClient.testBaseURLOverride = URL(string: "https://quota.test")
         MockURLProtocol.handler = { _ in
             Self.jsonResponse(402, ["error": ["code": "quota_exceeded", "kind": "free"]])
         }
@@ -104,7 +131,7 @@ final class QuotaClientTests: XCTestCase {
     }
 
     func testQuotaExceededDaily402FlatKind() async {
-        UserDefaults.standard.set("https://quota.test", forKey: baseURLKey)
+        QuotaClient.testBaseURLOverride = URL(string: "https://quota.test")
         MockURLProtocol.handler = { _ in
             Self.jsonResponse(402, ["code": "quota_exceeded", "kind": "daily"])
         }
@@ -119,7 +146,7 @@ final class QuotaClientTests: XCTestCase {
     }
 
     func testServerError500SurfacesStatusCodeAndCode() async {
-        UserDefaults.standard.set("https://quota.test", forKey: baseURLKey)
+        QuotaClient.testBaseURLOverride = URL(string: "https://quota.test")
         MockURLProtocol.handler = { _ in
             Self.jsonResponse(500, ["error": ["code": "upstream_failure"]])
         }
@@ -135,7 +162,7 @@ final class QuotaClientTests: XCTestCase {
     }
 
     func testRegisterProPostsTransactionJwt() async throws {
-        UserDefaults.standard.set("https://quota.test", forKey: baseURLKey)
+        QuotaClient.testBaseURLOverride = URL(string: "https://quota.test")
         MockURLProtocol.handler = { request in
             XCTAssertEqual(request.url?.path, "/proxy/register-pro")
             let data = request.httpBody ?? Self.bodyData(from: request)
@@ -169,7 +196,7 @@ final class QuotaClientTests: XCTestCase {
     }
 
     func testBaseURLTrailingSlashNormalized() async throws {
-        UserDefaults.standard.set("https://quota.test/", forKey: baseURLKey)
+        QuotaClient.testBaseURLOverride = URL(string: "https://quota.test/")
         MockURLProtocol.handler = { request in
             XCTAssertEqual(request.url?.absoluteString, "https://quota.test/proxy/quota")
             return Self.jsonResponse(200, [

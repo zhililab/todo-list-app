@@ -5,5 +5,12 @@
   "scripts": {
     "dev": "wrangler dev",
     "test": "node test.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "4.120.1"
+  },
+  "dependencies": {
+    "@peculiar/x509": "2.0.0",
+    "reflect-metadata": "0.2.2"
   }
 }

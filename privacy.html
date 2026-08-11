@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>隐私政策 / Privacy Policy · AI-native Todo</title>
+    <meta name="description" content="AI-native Todo 的中英双语隐私政策。">
+    <link rel="canonical" href="https://todo-list-app.zhili1993.chatgpt.site/privacy.html">
+    <link rel="stylesheet" href="legal.css">
+</head>
+<body>
+    <main class="legal-shell">
+        <header class="legal-header">
+            <p class="legal-kicker">AI-native Todo</p>
+            <h1>隐私政策 <span lang="en">Privacy Policy</span></h1>
+            <p class="legal-summary">本页面说明 AI-native Todo 如何处理数据；英文内容是中文内容的便利译文。</p>
+            <nav class="language-links" aria-label="语言 / Language"><a href="#zh">中文</a><a href="#en">English</a></nav>
+        </header>
+        <nav class="legal-nav" aria-label="相关页面"><a href="terms.html">服务条款 / Terms</a><a href="support.html">支持 / Support</a><a href="index.html">返回应用 / Back to app</a></nav>
+        <section class="legal-card" id="zh" lang="zh-CN">
+            <h2>隐私政策</h2>
+            <p class="notice"><strong>联系我们。</strong>数据控制者应为 App Store 产品页面显示的卖方/开发者。支持及隐私删除请求请发送至 <a href="mailto:lz123321@live.com">lz123321@live.com</a>。请勿在任何请求中发送 API Key、密码或完整的私密任务内容。</p>
+            <h3>我们处理的数据</h3>
+            <ul>
+                <li><strong>本地存储：</strong>任务及其上下文、验收标准、下一步提示、任务完成状态、语言偏好、提醒去重信息、伙伴聊天历史和记忆摘要会保存在您的设备上。您自行填写的 API Key 保存在设备 Keychain；服务商、模型和基础地址保存在本地。</li>
+                <li><strong>任务、聊天和语音转写文本：</strong>只有在您明确同意远程 AI 数据传输后，相关提示、任务上下文或聊天内容才会被发送以生成回复。获得同意后，每日 AI 简报也可能使用必要的任务上下文；您可在应用设置中撤回同意，之后应用改用本地规划器。语音功能先把语音转换为文字；转写文本会进入您确认的输入框，随后按您的操作保存或发送。</li>
+                <li><strong>麦克风音频与语音识别：</strong>语音输入会在设备上捕获原始音频，以供 iOS 音频与语音识别功能使用。Apple 的语音识别服务可能会依设备、系统版本、语言和网络状况处理或协助处理该音频。应用不会将原始音频发送给托管 Worker 或模型服务商；只有在您已授予麦克风/语音识别权限，并主动选择发送在线 AI 请求后，转写文本才可能被传给远程 AI。</li>
+                <li><strong>匿名设备标识符：</strong>使用托管 AI 额度时，应用会生成随机设备标识符，用于请求头、配额计数和订阅额度状态；它不是姓名、通讯录或精确位置。</li>
+                <li><strong>订阅交易：</strong>购买由 Apple 和 App Store 处理。为开通托管额度，应用可能向托管 Worker 发送经 StoreKit 提供的交易凭据及匿名设备标识符；我们不在本页面所述流程中收集支付卡信息。</li>
+            </ul>
+            <h3>AI 路由与接收方</h3>
+            <p><strong>托管 AI：</strong>当您没有配置自己的 API Key、且已启用托管额度时，内容会先经过托管 Worker，再发送给当前模型服务商 DeepSeek（固定模型为 DeepSeek V4 Flash）以完成请求。Worker 使用匿名设备标识符保存配额计数和订阅到期信息。</p>
+            <p><strong>自带 API Key（BYOK）：</strong>当您选择自带 API Key / Bring Your Own Key 时，应用会把您选择的请求内容直接发送给所选模型服务商；其处理适用该服务商的条款和隐私政策。请仅连接您信任的服务商。</p>
+            <h3>同意、撤回与保留</h3>
+            <p>远程 AI 数据传输须先获得您的明确同意；您可在应用设置中撤回同意，之后应用改用本地规划器。通知、麦克风和语音识别仅在您授予系统权限后使用。当前版本支持在应用中删除单个任务，并可清除 AI 配置和 Keychain 中的 API Key；如需移除全部本地应用数据，请使用系统提供的应用删除/数据清除方式。设备上的本地数据会保留到您删除数据、清除应用数据或卸载应用为止。</p>
+            <p>托管 Worker 的匿名配额记录和订阅到期信息在实现中用于额度服务，并会保留到运营者清除、服务停止或处理删除请求为止；我们不承诺未公开的固定保留期限。删除请求完成后，系统仍会有限保留经过域分隔哈希处理的“已删除设备”状态，以及不指向原始设备标识符的交易或通知哈希，用于阻止自动重新注册、维持退款/撤销顺序并保护其他设备的订阅状态。这些记录不包含原始设备标识符、完整 JWS 或原始交易 ID，不能用于恢复已删除的配额和订阅状态。本页面不使用广告追踪器、分析脚本或第三方字体。</p>
+            <h3>删除请求</h3>
+            <p>如需删除与托管 Worker 相关的可识别配额和订阅状态，请发送请求至 <a href="mailto:lz123321@live.com">lz123321@live.com</a>。删除完成后，上述不可恢复的哈希抑制与交易顺序记录仍会有限保留。设备上的单个任务可在应用中删除；请不要在邮件中发送 API Key、密码或完整私密任务内容。</p>
+            <p class="template">联系请求模板 / contact request template:
+主题：AI-native Todo 数据删除请求
+App 版本：
+iOS 版本：
+匿名设备标识符（如有）：
+请求：删除托管配额和订阅状态 / 说明其他问题</p>
+        </section>
+        <section class="legal-card" id="en" lang="en">
+            <h2>Privacy Policy</h2>
+            <p class="notice"><strong>Contact us.</strong> The controller must be the seller/developer shown on the App Store product page. Send support and privacy-deletion requests to <a href="mailto:lz123321@live.com">lz123321@live.com</a>. Do not send API keys, passwords, or full private task content in any request.</p>
+            <h3>Data we handle</h3>
+            <ul>
+                <li><strong>Local storage:</strong> tasks and their context, acceptance criteria, next prompts, completion state, language preference, reminder markers, companion chat history, and memory summaries stay on your device. Your chosen API key is stored in the device Keychain; provider, model, and base URL settings remain local.</li>
+                <li><strong>Task, chat, and voice transcription text:</strong> relevant prompts, task context, or chat content are sent only after you explicitly consent to remote AI data transfer. After consent, the daily AI brief may also use necessary task context; you can revoke consent in Settings, after which the app uses its local planner. Voice is transcribed to text first; the text enters the composer you review and is saved or sent only by your action.</li>
+                <li><strong>Microphone audio and speech recognition:</strong> voice input captures raw audio on device for iOS audio and speech-recognition features. Apple Speech service may process or assist in processing that audio depending on device, system version, language, and network conditions. The app does not send raw audio to the managed Worker or a model provider; only transcription text may be passed to remote AI after you grant microphone and speech-recognition permission and actively choose an online AI request.</li>
+                <li><strong>Anonymous device identifier:</strong> managed AI quota uses a random device identifier for request headers, quota counting, and subscription-quota state. It is not a name, contacts list, or precise location.</li>
+                <li><strong>Subscription transactions:</strong> Apple and the App Store process purchases. To enable managed quota, the app may send a StoreKit transaction credential and the anonymous device identifier to the managed Worker. We do not collect payment-card data in this flow.</li>
+            </ul>
+            <h3>AI routes and recipients</h3>
+            <p><strong>Managed AI:</strong> when you have not configured your own API key and managed quota is enabled, content goes through a managed Worker and then to the current model provider, DeepSeek (the fixed model is DeepSeek V4 Flash), to complete the request. The Worker keeps quota counts and subscription expiry with the anonymous device identifier.</p>
+            <p><strong>Bring Your Own Key (BYOK):</strong> when you choose your own API key, the app sends the request content you choose directly to your selected model provider. That provider's terms and privacy policy apply; connect only providers you trust.</p>
+            <h3>Consent, revocation, retention, and deletion request</h3>
+            <p>Remote AI data transfer requires your explicit consent. You can revoke consent in Settings, after which the app uses its local planner. Notifications, microphone access, and speech recognition are used only after you grant system permission. The current release lets you delete individual tasks and clear AI configuration and API keys from the Keychain; use the system's app deletion/data-clearing controls to remove all local app data. Local device data remains until you delete it, clear app data, or uninstall the app.</p>
+            <p>Anonymous managed-Worker quota records and subscription expiry are retained for the quota service until the operator clears them, the service ends, or a deletion request is processed; no unpublished fixed retention period is promised. After deletion completes, the service retains a limited domain-separated hash of the erased-device state and transaction or notification hashes that do not point to the raw device identifier. These records prevent automatic re-registration, preserve refund and revocation ordering, and protect subscription state on other devices. They contain no raw device identifier, full JWS, or raw transaction ID and cannot restore deleted quota or subscription state. This page uses no advertising trackers, analytics scripts, or third-party fonts.</p>
+            <p>To request deletion of identifiable managed-Worker quota and subscription state, email <a href="mailto:lz123321@live.com">lz123321@live.com</a>. The limited, non-reversible suppression and transaction-ordering hashes described above remain after completion. Individual device tasks can be deleted in the app. Do not include API keys, passwords, or full private task content in email.</p>
+        </section>
+        <footer class="legal-footer">最后更新 / Last updated: 2026-08-11 · Version 1.0.0</footer>
+    </main>
+</body>
+</html>

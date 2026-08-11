@@ -9,6 +9,7 @@ struct SettingsView: View {
     @EnvironmentObject private var aiVM: AIViewModel
     @EnvironmentObject private var lang: LanguageEnvironment
     @EnvironmentObject private var notificationService: NotificationService
+    @EnvironmentObject private var consentManager: AIConsentManager
 
     @State private var exportedText = ""
     @State private var exportFileName = "todo-list-app.md"
@@ -16,6 +17,17 @@ struct SettingsView: View {
     @State private var showExport = false
     @State private var copied = false
     @State private var showNotificationSettingsPrompt = false
+    @State private var showRevokeAIConsentConfirmation = false
+    @State private var showDeleteAIConfigurationConfirmation = false
+    @State private var showAIConfigurationDeletionError = false
+    @State private var copiedSupportID = false
+    @State private var isRestoringPurchases = false
+    @State private var isRefreshingEntitlements = false
+    private let appConfiguration = AppConfiguration()
+
+    private var supportID: String {
+        SupportIdentifier.displayValue(for: QuotaClient.deviceID)
+    }
 #if DEBUG
     @State private var showTestResult = false
     @State private var sentTestOK = false
@@ -207,6 +219,59 @@ struct SettingsView: View {
                         .foregroundStyle(Color.appMuted)
                 }
 
+                Section(Localization.t("settings.privacy")) {
+                    if let privacyURL = appConfiguration.privacyPolicyURL {
+                        Link(Localization.t("settings.privacy"), destination: privacyURL)
+                            .accessibilityLabel(Localization.t("settings.privacy"))
+                    }
+                    if let termsURL = appConfiguration.termsOfUseURL {
+                        Link(Localization.t("settings.terms"), destination: termsURL)
+                            .accessibilityLabel(Localization.t("settings.terms"))
+                    }
+                    if let supportURL = appConfiguration.supportURL {
+                        Link(Localization.t("settings.support"), destination: supportURL)
+                            .accessibilityLabel(Localization.t("settings.support"))
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(Localization.t("settings.supportID"))
+                            .font(.headline)
+                        Text(supportID)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(Color.appMuted)
+                            .textSelection(.enabled)
+                        Text(Localization.t("settings.supportIDDetail"))
+                            .font(AppTheme.Typography.caption2)
+                            .foregroundStyle(Color.appMuted)
+
+                        Button {
+                            UIPasteboard.general.string = supportID
+                            copiedSupportID = true
+                            Task {
+                                try? await Task.sleep(nanoseconds: 1_200_000_000)
+                                copiedSupportID = false
+                            }
+                        } label: {
+                            Label(
+                                Localization.t(copiedSupportID ? "settings.supportIDCopied" : "settings.copySupportID"),
+                                systemImage: copiedSupportID ? "checkmark.circle.fill" : "doc.on.doc"
+                            )
+                        }
+                        .accessibilityLabel(Localization.t(copiedSupportID ? "settings.supportIDCopied" : "settings.copySupportID"))
+                        .accessibilityHint(Localization.t("settings.copySupportIDA11yHint"))
+                    }
+                    .accessibilityElement(children: .contain)
+
+                    Button(Localization.t("settings.aiConsentRevoke"), role: .destructive) {
+                        showRevokeAIConsentConfirmation = true
+                    }
+                    .disabled(!consentManager.hasStoredConsent)
+
+                    Button(Localization.t("settings.deleteAIConfiguration"), role: .destructive) {
+                        showDeleteAIConfigurationConfirmation = true
+                    }
+                }
+
                 Section(Localization.t("buddy.settings")) {
                     TextField(Localization.t("buddy.name"), text: $buddyName)
                         .textInputAutocapitalization(.never)
@@ -246,10 +311,49 @@ struct SettingsView: View {
                 }
 
                 Section(Localization.t("settings.billing")) {
-                    Button(Localization.t("settings.restore")) {
-                        Task { await purchaseManager.restorePurchases() }
+                    Button {
+                        isRestoringPurchases = true
+                        Task {
+                            await purchaseManager.restorePurchases()
+                            isRestoringPurchases = false
+                        }
+                    } label: {
+                        HStack(spacing: 8) {
+                            if isRestoringPurchases { ProgressView() }
+                            Text(Localization.t("settings.restore"))
+                        }
                     }
                     .foregroundStyle(Color.accentBlue)
+                    .disabled(isRestoringPurchases)
+
+                    Link(
+                        Localization.t("settings.manageSubscriptions"),
+                        destination: URL(string: "https://apps.apple.com/account/subscriptions")!
+                    )
+                }
+
+                if let registration = ProRegistrationPresentation(status: purchaseManager.registrationStatus) {
+                    Section(Localization.t("settings.status")) {
+                        Text(Localization.t(registration.messageKey))
+                            .foregroundStyle(.orange)
+                            .font(.caption)
+
+                        if registration.canRetry {
+                            Button {
+                                isRefreshingEntitlements = true
+                                Task {
+                                    await purchaseManager.refreshEntitlements()
+                                    isRefreshingEntitlements = false
+                                }
+                            } label: {
+                                HStack(spacing: 8) {
+                                    if isRefreshingEntitlements { ProgressView() }
+                                    Text(Localization.t("purchase.refreshRegistration"))
+                                }
+                            }
+                            .disabled(isRefreshingEntitlements)
+                        }
+                    }
                 }
 
                 Section(Localization.t("settings.benefits")) {
@@ -290,6 +394,43 @@ struct SettingsView: View {
                 }
             } message: {
                 Text(Localization.t("notice.permissionExplanation"))
+            }
+            .alert(
+                Localization.t("settings.aiConsentRevokeTitle"),
+                isPresented: $showRevokeAIConsentConfirmation
+            ) {
+                Button(Localization.t("common.cancel"), role: .cancel) {}
+                Button(Localization.t("settings.aiConsentRevoke"), role: .destructive) {
+                    consentManager.revoke()
+                }
+            } message: {
+                Text(Localization.t("settings.aiConsentRevokeDetail"))
+            }
+            .alert(
+                Localization.t("settings.deleteAIConfigurationTitle"),
+                isPresented: $showDeleteAIConfigurationConfirmation
+            ) {
+                Button(Localization.t("common.cancel"), role: .cancel) {}
+                Button(
+                    Localization.t("settings.deleteAIConfigurationConfirm"),
+                    role: .destructive
+                ) {
+                    do {
+                        try aiVM.deleteLocalConfiguration()
+                    } catch {
+                        showAIConfigurationDeletionError = true
+                    }
+                }
+            } message: {
+                Text(Localization.t("settings.deleteAIConfigurationDetail"))
+            }
+            .alert(
+                Localization.t("settings.deleteAIConfigurationErrorTitle"),
+                isPresented: $showAIConfigurationDeletionError
+            ) {
+                Button(Localization.t("common.ok"), role: .cancel) {}
+            } message: {
+                Text(Localization.t("settings.deleteAIConfigurationErrorDetail"))
             }
             .sheet(isPresented: $showExport) {
                 NavigationStack {

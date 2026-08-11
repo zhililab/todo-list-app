@@ -77,6 +77,23 @@ struct AIWorkbenchRequest: Equatable, Sendable {
 
 @MainActor
 final class AIBriefingViewModel: ObservableObject {
+    private enum PendingConsentRequest {
+        case brief(
+            routeIdentifier: String,
+            context: AIAssistantContext,
+            now: Date,
+            dayKey: String,
+            previous: AIDailyBrief?
+        )
+        case workbench(
+            routeIdentifier: String,
+            request: AIWorkbenchRequest,
+            context: AIAssistantContext,
+            now: Date,
+            previous: AIWorkbenchSession?
+        )
+    }
+
     @Published private(set) var briefState: AIBriefState = .idle
     @Published private(set) var isBriefStale = false
     @Published var mode: AIWorkbenchMode = .todayPlan {
@@ -92,20 +109,24 @@ final class AIBriefingViewModel: ObservableObject {
     private let service: any AIAssistantServing
     private let cache: any AIBriefCaching
     private let attemptTracker: any AIBriefAutoAttemptTracking
+    private let consentManager: AIConsentManager
     private var currentContext: AIAssistantContext?
     private var activeBriefRequest: AIBriefRequest?
     private var activeWorkbenchRequest: AIWorkbenchRequest?
     private var activeBriefTask: Task<(AIDailyBriefContent, AIAssistantSource), Error>?
     private var activeWorkbenchTask: Task<AIWorkbenchResult, Error>?
+    private var pendingConsentRequest: PendingConsentRequest?
 
     init(
         service: any AIAssistantServing = LiveAIAssistantService(),
         cache: any AIBriefCaching = UserDefaultsAIBriefCache(),
-        attemptTracker: any AIBriefAutoAttemptTracking = UserDefaultsAIBriefAttemptTracker()
+        attemptTracker: any AIBriefAutoAttemptTracking = UserDefaultsAIBriefAttemptTracker(),
+        consentManager: AIConsentManager = OpenAIService.consentManager
     ) {
         self.service = service
         self.cache = cache
         self.attemptTracker = attemptTracker
+        self.consentManager = consentManager
     }
 
     func appear(
@@ -140,7 +161,8 @@ final class AIBriefingViewModel: ObservableObject {
             context: context,
             now: now,
             dayKey: dayKey,
-            previous: currentBrief ?? cache.loadMostRecent()
+            previous: currentBrief ?? cache.loadMostRecent(),
+            intent: .automatic
         )
     }
 
@@ -164,7 +186,8 @@ final class AIBriefingViewModel: ObservableObject {
             context: context,
             now: now,
             dayKey: dayKey,
-            previous: previous
+            previous: previous,
+            intent: .manual
         )
     }
 
@@ -190,6 +213,46 @@ final class AIBriefingViewModel: ObservableObject {
             contextFingerprint: context.fingerprint
         )
         let previous = currentWorkbenchSession
+        await executeWorkbench(
+            request: request,
+            context: context,
+            now: now,
+            previous: previous
+        )
+    }
+
+    func resolvePendingConsent(_ resolution: AIConsentResolution?) async {
+        guard let resolution, let pendingConsentRequest else { return }
+
+        switch pendingConsentRequest {
+        case .brief(let routeIdentifier, let context, let now, let dayKey, let previous):
+            guard routeIdentifier == resolution.route.identifier else { return }
+            self.pendingConsentRequest = nil
+            await generateBrief(
+                context: context,
+                now: now,
+                dayKey: dayKey,
+                previous: previous,
+                intent: .manual
+            )
+        case .workbench(let routeIdentifier, let request, let context, let now, let previous):
+            guard routeIdentifier == resolution.route.identifier else { return }
+            self.pendingConsentRequest = nil
+            await executeWorkbench(
+                request: request,
+                context: context,
+                now: now,
+                previous: previous
+            )
+        }
+    }
+
+    private func executeWorkbench(
+        request: AIWorkbenchRequest,
+        context: AIAssistantContext,
+        now: Date,
+        previous: AIWorkbenchSession?
+    ) async {
         activeWorkbenchTask?.cancel()
         activeWorkbenchRequest = request
         if previous == nil {
@@ -201,7 +264,8 @@ final class AIBriefingViewModel: ObservableObject {
                 mode: request.mode,
                 goal: request.goal,
                 context: context,
-                now: now
+                now: now,
+                intent: .manual
             )
         }
         activeWorkbenchTask = serviceTask
@@ -232,6 +296,18 @@ final class AIBriefingViewModel: ObservableObject {
             activeWorkbenchTask = nil
             if error is CancellationError || Task.isCancelled {
                 workbenchState = previous.map(AIWorkbenchState.result) ?? .idle
+                return
+            }
+            if case RemoteAIConsentError.needsConsent(let route) = error {
+                pendingConsentRequest = .workbench(
+                    routeIdentifier: route.identifier,
+                    request: request,
+                    context: context,
+                    now: now,
+                    previous: previous
+                )
+                workbenchState = previous.map(AIWorkbenchState.result) ?? .idle
+                consentManager.requestConsent(for: route)
                 return
             }
             workbenchState = .failed(
@@ -371,7 +447,8 @@ final class AIBriefingViewModel: ObservableObject {
         context: AIAssistantContext,
         now: Date,
         dayKey: String,
-        previous: AIDailyBrief?
+        previous: AIDailyBrief?,
+        intent: RemoteAIRequestIntent
     ) async {
         let request = AIBriefRequest(
             id: UUID(),
@@ -383,7 +460,7 @@ final class AIBriefingViewModel: ObservableObject {
         briefState = .loading(previous: previous)
         updateStaleState(for: previous)
         let serviceTask = Task {
-            try await service.dailyBrief(context: context, now: now)
+            try await service.dailyBrief(context: context, now: now, intent: intent)
         }
         activeBriefTask = serviceTask
 
@@ -412,6 +489,20 @@ final class AIBriefingViewModel: ObservableObject {
             if error is CancellationError || Task.isCancelled {
                 briefState = previous.map(AIBriefState.loaded) ?? .idle
                 updateStaleState(for: previous)
+                return
+            }
+            if case RemoteAIConsentError.needsConsent(let route) = error,
+               intent == .manual {
+                pendingConsentRequest = .brief(
+                    routeIdentifier: route.identifier,
+                    context: context,
+                    now: now,
+                    dayKey: dayKey,
+                    previous: previous
+                )
+                briefState = previous.map(AIBriefState.loaded) ?? .idle
+                updateStaleState(for: previous)
+                consentManager.requestConsent(for: route)
                 return
             }
             briefState = .failed(

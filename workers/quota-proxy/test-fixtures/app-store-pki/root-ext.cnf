@@ -1,0 +1,14 @@
+[req]
+distinguished_name = dn
+prompt = no
+x509_extensions = root_ca
+
+[dn]
+CN = Todo App Store Test Root CA
+O = Test Fixtures Only
+
+[root_ca]
+basicConstraints = critical, CA:true, pathlen:1
+keyUsage = critical, keyCertSign, cRLSign
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always

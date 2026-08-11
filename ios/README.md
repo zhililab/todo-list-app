@@ -8,17 +8,19 @@
 - `ios/Runbook/parallel-handoff.md`：执行拆分清单（可并行认领给 agent）
 - `ios/Design/ios-architecture-plan.md`：App 结构、权限边界、发布策略与数据库设计
 - `ios/Runbook/iap-and-release-checklist.md`：IAP 与发布清单
+- `ios/AppStoreConnect/`：双语元数据、App Privacy、审核备注、截图、订阅文案与发布证据
 
-## 当前状态（2026-08-09）
+## 当前状态（2026-08-11）
 
 - [x] 核心信息架构完成：任务类型、上下文、验收标准、下一步 Prompt
-- [x] 7 天试用 + 订阅 gating 入口完成（设置页主入口 + 启动自动弹窗）
+- [x] 设备本地 7 天体验 + 订阅 gating 入口完成（不是 App Store Connect Introductory Offer；设置页主入口 + 启动自动弹窗）
 - [x] 今日健康度看板（任务完成率、状态分布、今日计划卡片）
 - [x] 任务卡片工作流升级（状态快速切换、状态可视化、滑动操作/上下文菜单）
 - [x] Obsidian 导出面向付费态完善（分享、复制、文件名）
 - [x] Companion 伙伴 Tab（聊天 + 跨会话记忆 + 关键时刻引擎：完成庆祝每日去重/逾期轻推 + 建议动作流）
 - [x] Companion 体验升级：iMessage 风格气泡 + 打字指示器；语音输入（SFSpeechRecognizer + AVAudioEngine，双权限校验）
-- [x] AI 配额客户端（QuotaClient：无 Key 时走托管代理 `deepseek-chat`，402 映射本地化提示；register-pro 验签）
+- [x] AI 配额客户端（QuotaClient：无 Key 时走托管代理 `deepseek-chat`，402 映射本地化提示；register-pro 接口已接入）
+- [ ] register-pro 生产交易验证：当前 Worker 仅解析 JWS payload，未验证 Apple 签名、bundle ID、environment 或退款/撤销；完成前不得宣称托管订阅权益安全可用
 - [x] 本地通知精确到分钟（DatePicker 时分，按期触发；任务完成自动取消；过期补发最小 60s；设置页授权状态）
 - [x] 自然语言截止时间解析：快速创建任务可识别“今天 / 明天 / 后天”、时段与时刻，以及“X 小时 / 分钟后”，并自动调度本地提醒
 - [x] 微交互与动画（打勾弹跳+闪光、按钮按压、列表过渡、统计 pop、气泡滑入/打字指示器，尊重 Reduce Motion）
@@ -28,7 +30,9 @@
 - [x] 编辑已存任务（TaskEditView）+ 清除已完成
 - [x] 中/英双语切换（Localization 字典 + 设置页入口，对齐 web I18N）
 - [x] 4-Tab 布局：今日计划（Today）/ 任务（Tasks）/ 伙伴（Buddy）/ 设置（Settings）
-- [ ] App Store 构建与截图、隐私清单、正式 TestFlight
+- [x] App Store Connect 提交材料工作稿与 owner-action 清单
+- [ ] App Store 构建与截图、App Privacy 最终填写、正式 TestFlight
+- [ ] 生产 managed AI endpoint、Worker KV/secrets 与安全交易验证（缺失时 Release 仅提供本地规划/BYOK，不宣称托管 AI 可用）
 
 ## 运行建议
 
@@ -47,8 +51,17 @@
    - `xcodebuild -project ios/TodoNative.xcodeproj -scheme TodoNative -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=27.0' test`
    - 或 `xcodegen generate` 后在 Xcode 中按 `Cmd+U`
 5. 先在本地确认首页与任务流可用，再接入真实 AI 与付费。
-6. 再配置 IAP（`com.zhili.todo.premium.monthly` / `com.zhili.todo.premium.yearly`）并启用 7 天试用。
-7. 最后补上真实的 AI 后端（或代理服务）后，上 TestFlight。
+6. 再配置 IAP（`com.zhili.todo.premium.monthly` / `com.zhili.todo.premium.yearly`）；当前 7 天体验只保存在设备本地，不是 App Store Connect Introductory Offer。
+7. 按 `ios/Runbook/iap-and-release-checklist.md` 关闭外部 owner actions；生产 managed AI 缺失时保持 unavailable，并让元数据/截图/审核备注与实际构建一致。
+
+## App Store Connect 材料
+
+- 元数据：`ios/AppStoreConnect/metadata.zh-Hans.md`、`ios/AppStoreConnect/metadata.en-US.md`
+- 隐私与审核：`ios/AppStoreConnect/app-privacy-checklist.md`、`ios/AppStoreConnect/review-notes.md`
+- 截图与订阅：`ios/AppStoreConnect/screenshot-capture-checklist.md`、`ios/AppStoreConnect/subscription-copy.md`
+- 发布证据：`ios/AppStoreConnect/release-evidence.md`
+
+这些文件是仓库内工作稿，不代表 App Store Connect、TestFlight 或生产 Worker 已完成。法律主体、copyright、实际价格、类别、年龄分级、出口合规、DSA 和审核联系人均保留为 `ACTION REQUIRED`。
 
 ## 本地预览命令（推荐）
 

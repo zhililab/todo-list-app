@@ -3,6 +3,22 @@ import SwiftUI
 
 @MainActor
 final class CompanionViewModel: ObservableObject {
+    typealias ChatOperation = ([[String: String]]) async throws -> String?
+    typealias BreakdownOperation = @MainActor (String, [TodoItem]) async throws -> String
+
+    private struct PendingRemoteSend {
+        let routeIdentifier: String
+        let originalText: String
+        let payload: [[String: String]]
+        let context: AIAssistantContext
+    }
+
+    private struct PendingBreakdown {
+        let routeIdentifier: String
+        let goal: String
+        let todoViewModel: TodoViewModel
+    }
+
     @Published var messages: [BuddyMessage] = []
     @Published var input = ""
     @Published var isBusy = false
@@ -44,8 +60,24 @@ final class CompanionViewModel: ObservableObject {
     static let celebratedKey = "companion_celebrated"
 
     private static let maxHistory = 40
+    private let consentManager: AIConsentManager
+    private let chat: ChatOperation
+    private let breakdown: BreakdownOperation
+    private var pendingRemoteSend: PendingRemoteSend?
+    private var pendingBreakdown: PendingBreakdown?
 
-    init() {
+    init(
+        consentManager: AIConsentManager = OpenAIService.consentManager,
+        chat: @escaping ChatOperation = { messages in
+            try await OpenAIService.callChat(messages: messages)
+        },
+        breakdown: @escaping BreakdownOperation = { goal, items in
+            try await AIService.breakdown(goal: goal, items: items)
+        }
+    ) {
+        self.consentManager = consentManager
+        self.chat = chat
+        self.breakdown = breakdown
         loadHistory()
     }
 
@@ -76,35 +108,100 @@ final class CompanionViewModel: ObservableObject {
             doneCount: items.filter(\.isCompleted).count,
             buddyName: name)
 
-        let reply: String
-        do {
-            let text = try await OpenAIService.callChat(messages: [
+        let request = PendingRemoteSend(
+            routeIdentifier: "",
+            originalText: trimmed,
+            payload: [
                 ["role": "system", "content": system],
                 ["role": "user", "content": user]
-            ])
+            ],
+            context: AIAssistantContext(items: items, health: health)
+        )
+        return await performRemoteSend(request)
+    }
+
+    func resolvePendingConsent(_ resolution: AIConsentResolution?) async -> String? {
+        guard let resolution, !isBusy else { return nil }
+        if let pendingRemoteSend,
+           pendingRemoteSend.routeIdentifier == resolution.route.identifier {
+            self.pendingRemoteSend = nil
+            isBusy = true
+            isTyping = true
+            return await performRemoteSend(pendingRemoteSend)
+        }
+        if let pendingBreakdown,
+           pendingBreakdown.routeIdentifier == resolution.route.identifier {
+            self.pendingBreakdown = nil
+            await performBreakdown(
+                goal: pendingBreakdown.goal,
+                in: pendingBreakdown.todoViewModel
+            )
+        }
+        return nil
+    }
+
+    private func performRemoteSend(_ request: PendingRemoteSend) async -> String? {
+        do {
+            let text = try await chat(request.payload)
             if let text, !text.isEmpty {
                 let parsed = CompanionActions.parse(text)
                 var actions = parsed.actions.map { BuddyAction(label: $0.label, kind: $0.kind, payload: $0.payload) }
-                if actions.isEmpty, let taskText = CompanionActions.extractTaskIntent(trimmed) {
+                if actions.isEmpty, let taskText = CompanionActions.extractTaskIntent(request.originalText) {
                     actions = [BuddyAction(label: Localization.t("buddy.addTodo"), kind: "add_task", payload: ["text": taskText])]
                 }
-                reply = parsed.text
                 appendAnimated(BuddyMessage(role: "assistant", text: parsed.text, actions: actions))
+                return finishSend(reply: parsed.text, originalText: request.originalText)
             } else {
-                reply = Localization.t("buddy.silent")
-                appendAnimated(BuddyMessage(role: "assistant", text: reply))
+                return finishWithLocalPlanner(request)
             }
+        } catch RemoteAIConsentError.needsConsent(let route) {
+            pendingRemoteSend = PendingRemoteSend(
+                routeIdentifier: route.identifier,
+                originalText: request.originalText,
+                payload: request.payload,
+                context: request.context
+            )
+            consentManager.requestConsent(for: route)
+            isTyping = false
+            isBusy = false
+            saveHistory()
+            return nil
+        } catch RemoteAIConsentError.declined {
+            return finishWithLocalPlanner(request)
         } catch let error as QuotaError {
-            reply = quotaMessage(for: error)
+            let reply = quotaMessage(for: error)
             appendAnimated(BuddyMessage(role: "assistant", text: reply))
+            return finishSend(reply: reply, originalText: request.originalText)
         } catch {
-            reply = Localization.t("buddy.silent")
+            let reply = Localization.t("buddy.silent")
             appendAnimated(BuddyMessage(role: "assistant", text: reply))
+            return finishSend(reply: reply, originalText: request.originalText)
         }
+    }
+
+    private func finishWithLocalPlanner(_ request: PendingRemoteSend) -> String {
+        let result = LocalAIAssistantPlanner.workbench(
+            mode: .breakdown,
+            goal: request.originalText,
+            context: request.context,
+            now: Date()
+        )
+        let actions = result.suggestedTasks.map {
+            BuddyAction(
+                label: Localization.t("buddy.addTodo"),
+                kind: "add_task",
+                payload: ["text": $0.title]
+            )
+        }
+        appendAnimated(BuddyMessage(role: "assistant", text: result.overview, actions: actions))
+        return finishSend(reply: result.overview, originalText: request.originalText)
+    }
+
+    private func finishSend(reply: String, originalText: String) -> String {
         isTyping = false
         isBusy = false
         saveHistory()
-        memory = CompanionCore.stripMemory(old: memory, events: [trimmed, reply])
+        memory = CompanionCore.stripMemory(old: memory, events: [originalText, reply])
         return reply
     }
 
@@ -178,19 +275,41 @@ final class CompanionViewModel: ObservableObject {
         case "breakdown":
             if !title.isEmpty {
                 Task {
-                    if let text = try? await AIService.breakdown(goal: title, items: vm.unarchivedItems) {
-                        for task in AIService.extractTasks(from: text) {
-                            vm.captureNaturalLanguage(task, sourceGoal: "companion")
-                        }
-                    }
-                    appendAnimated(BuddyMessage(role: "assistant", text: Localization.t("buddy.splitTask")))
-                    saveHistory()
+                    await performBreakdown(goal: title, in: vm)
                 }
             }
         default:
             break
         }
         saveHistory()
+    }
+
+    private func performBreakdown(goal: String, in vm: TodoViewModel) async {
+        do {
+            let text = try await breakdown(goal, vm.unarchivedItems)
+            for task in AIService.extractTasks(from: text) {
+                vm.captureNaturalLanguage(task, sourceGoal: "companion")
+            }
+            appendAnimated(
+                BuddyMessage(role: "assistant", text: Localization.t("buddy.splitTask"))
+            )
+            saveHistory()
+        } catch RemoteAIConsentError.needsConsent(let route) {
+            pendingBreakdown = PendingBreakdown(
+                routeIdentifier: route.identifier,
+                goal: goal,
+                todoViewModel: vm
+            )
+            consentManager.requestConsent(for: route)
+        } catch let error as QuotaError {
+            appendAnimated(BuddyMessage(role: "assistant", text: quotaMessage(for: error)))
+            saveHistory()
+        } catch {
+            appendAnimated(
+                BuddyMessage(role: "assistant", text: Localization.t("buddy.silent"))
+            )
+            saveHistory()
+        }
     }
 
     private func loadHistory() {

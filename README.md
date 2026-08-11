@@ -85,12 +85,26 @@ iOS 运行方式见 `ios/README.md`（`xcodegen generate` + Xcode 运行，或 `
 - Production: https://todo-list-app.zhili1993.chatgpt.site
 - GitHub 仓库： https://github.com/zhililab/todo-list-app
 
+### Legal and support pages / 法律与支持页面
+
+本地预览前先构建，再启动预览服务：
+
+```bash
+npm run build
+npm run preview
+```
+
+预览服务默认监听 `http://127.0.0.1:4173`；打开首页以及 `privacy.html`、`terms.html`、`support.html`，确认页脚链接和中英文锚点可用。生产站点由 Codex Sites 托管；部署时通过已授权的 Sites 发布流程更新构建产物，不要把托管凭据、API Key 或未验证的支持邮箱写入仓库。
+
 ## iOS 版本
 
 - 当前状态与运行说明：`ios/README.md`
 - 架构与订阅实现建议：`ios/Design/ios-architecture-plan.md`
 - 多任务并行执行清单：`ios/Runbook/parallel-handoff.md`
 - IAP 与发布清单：`ios/Runbook/iap-and-release-checklist.md`
+- App Store Connect 提交材料：`ios/AppStoreConnect/`（双语元数据、App Privacy、审核备注、截图、订阅与发布证据）
+
+> App Store 材料是工作稿，不等于已提交。当前生产 managed AI endpoint 尚未配置；Release 必须保持 unavailable 并继续提供本地规划/BYOK。法律主体、copyright、实际价格、App Store Connect 合规选择与审核联系人仍需 owner 完成。
 
 ## 截图
 

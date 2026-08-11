@@ -119,9 +119,29 @@ async function fetchHandler(request) {
 }
 
 export default { fetch: fetchHandler };
-addEventListener('fetch', (event) => {
-  event.respondWith(fetchHandler(event.request));
-});
+if (typeof addEventListener === 'function') {
+  addEventListener('fetch', (event) => {
+    event.respondWith(fetchHandler(event.request));
+  });
+} else if (typeof process !== 'undefined' && process.release?.name === 'node' && process.env.PREVIEW_DISABLE_SERVER !== '1') {
+  const { createServer } = await import('node:http');
+  const host = process.env.HOST || '127.0.0.1';
+  const port = Number(process.env.PORT || 4173);
+  const server = createServer(async (req, res) => {
+    try {
+      const origin = 'http://' + (req.headers.host || host + ':' + port);
+      const response = await fetchHandler(new Request(origin + (req.url || '/'), { method: req.method }));
+      res.writeHead(response.status, Object.fromEntries(response.headers));
+      res.end(Buffer.from(await response.arrayBuffer()));
+    } catch (error) {
+      res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Server error: ' + String(error));
+    }
+  });
+  server.listen(port, host, () => {
+    console.log('Preview listening on http://' + host + ':' + port);
+  });
+}
 `;
 
 writeFileSync(resolve(runtimeDir, 'index.js'), serverCode.trimStart());

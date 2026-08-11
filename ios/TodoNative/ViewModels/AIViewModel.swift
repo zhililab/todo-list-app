@@ -3,7 +3,16 @@ import Foundation
 @MainActor
 final class AIViewModel: ObservableObject {
     @Published var apiKey: String {
-        didSet { OpenAIService.saveAPIKey(apiKey) }
+        didSet {
+            guard !isRestoringAPIKey else { return }
+            guard OpenAIService.saveAPIKey(apiKey) else {
+                isRestoringAPIKey = true
+                apiKey = OpenAIService.apiKey()
+                isRestoringAPIKey = false
+                statusMessage = Localization.t("ai.keySaveFailed")
+                return
+            }
+        }
     }
     @Published var providerID: String {
         didSet {
@@ -38,6 +47,7 @@ final class AIViewModel: ObservableObject {
     @Published var quotaExceeded = false
 
     private var isLoadingProviderConfiguration = true
+    private var isRestoringAPIKey = false
 
     var providers: [AIProvider] { AIProvider.registry }
 
@@ -155,6 +165,16 @@ final class AIViewModel: ObservableObject {
     func clearTodayPlanOutput() {
         isTodayPlanOutput = false
         outputText = ""
+    }
+
+    func deleteLocalConfiguration() throws {
+        try OpenAIService.deleteLocalAIConfiguration()
+        apiKey = OpenAIService.apiKey()
+        providerID = OpenAIService.providerID()
+        loadProviderConfiguration()
+        outputText = ""
+        suggestedTasks = []
+        quotaExceeded = false
     }
 
     private func setBusy(remoteStatus: String, localStatus: String) {
