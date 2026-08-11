@@ -1,0 +1,7 @@
+[wwdr_ca]
+basicConstraints = critical, CA:true, pathlen:0
+keyUsage = critical, keyCertSign, cRLSign
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid, issuer
+1.2.840.113635.100.6.2.1 = critical, DER:05:00
+1.2.840.113635.100.6.11.1 = critical, DER:05:00

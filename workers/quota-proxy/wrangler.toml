@@ -2,8 +2,22 @@ name = "todo-quota-proxy"
 main = "src/index.js"
 compatibility_date = "2026-08-01"
 
-# KV 命名空间：先运行 `wrangler kv namespace create QUOTA`，
-# 把返回的 id 填到下面再部署。
+# Wrangler v4 automatic provisioning：首次 deploy 创建 KV 并把真实 id 回写到本文件。
 [[kv_namespaces]]
 binding = "QUOTA"
-id = "PASTE_NAMESPACE_ID_HERE"
+
+[[durable_objects.bindings]]
+name = "ENTITLEMENTS"
+class_name = "EntitlementCoordinator"
+
+[[durable_objects.bindings]]
+name = "DEVICE_PRIVACY"
+class_name = "DevicePrivacyCoordinator"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["EntitlementCoordinator"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["DevicePrivacyCoordinator"]

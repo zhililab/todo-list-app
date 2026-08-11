@@ -11,6 +11,7 @@ weread_exports/
 # dependencies / build output
 node_modules/
 ios/build/
+workers/quota-proxy/.dev.vars
 
 # isolated Codex worktrees
 .worktrees/

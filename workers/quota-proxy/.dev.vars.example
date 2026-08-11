@@ -1,0 +1,7 @@
+# Copy to .dev.vars for local-only development. Never commit .dev.vars.
+DEEPSEEK_API_KEY=
+APP_STORE_BUNDLE_ID=
+APP_STORE_ENVIRONMENT=
+APP_STORE_APPLE_ID=
+ALLOWED_ORIGINS=
+ERASURE_ADMIN_TOKEN=

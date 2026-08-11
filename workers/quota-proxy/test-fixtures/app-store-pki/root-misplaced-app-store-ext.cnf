@@ -1,0 +1,6 @@
+[root_ca]
+basicConstraints = critical, CA:true, pathlen:1
+keyUsage = critical, keyCertSign, cRLSign
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always
+1.2.840.113635.100.6.11.1 = critical, DER:05:00
