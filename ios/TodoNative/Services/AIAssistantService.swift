@@ -16,6 +16,7 @@ protocol AIAssistantServing {
     func workbench(
         mode: AIWorkbenchMode,
         goal: String,
+        selectedGoal: AISelectedGoalContext?,
         context: AIAssistantContext,
         now: Date,
         intent: RemoteAIRequestIntent
@@ -296,6 +297,7 @@ struct LiveAIAssistantService: AIAssistantServing {
     func workbench(
         mode: AIWorkbenchMode,
         goal: String,
+        selectedGoal: AISelectedGoalContext?,
         context: AIAssistantContext,
         now: Date,
         intent: RemoteAIRequestIntent = .manual
@@ -307,8 +309,12 @@ struct LiveAIAssistantService: AIAssistantServing {
             now: now
         )
         do {
+            var promptRows = ["goal=\(goal)", Self.contextPrompt(context)]
+            if mode == .breakdown, let selectedGoal {
+                promptRows.append("selectedTask=\(selectedGoal.promptJSON)")
+            }
             let response = try await transport.call(
-                promptText: "goal=\(goal)\n\(Self.contextPrompt(context))",
+                promptText: promptRows.joined(separator: "\n"),
                 instructionText: Self.workbenchInstruction(mode: mode)
             )
             guard let text = response.text,

@@ -51,6 +51,29 @@ final class AIWorkbenchPresentationTests: XCTestCase {
         XCTAssertTrue(review.canGenerate(goal: ""))
     }
 
+    func testBreakdownCanGenerateWithBlankTextWhenCurrentSelectedGoalFingerprintExists() {
+        let breakdown = AIWorkbenchModePresentation(mode: .breakdown)
+
+        XCTAssertTrue(
+            breakdown.canGenerate(
+                goal: " \n\t ",
+                selectedGoalFingerprint: "valid-selected-goal-fingerprint"
+            )
+        )
+        XCTAssertFalse(
+            breakdown.canGenerate(
+                goal: " \n\t ",
+                selectedGoalFingerprint: nil
+            )
+        )
+        XCTAssertFalse(
+            breakdown.canGenerate(
+                goal: " \n\t ",
+                selectedGoalFingerprint: " \n "
+            )
+        )
+    }
+
     func testModePresentationProvidesModeSpecificQuestionsAndPromptChips() {
         XCTAssertEqual(
             AIWorkbenchModePresentation(mode: .todayPlan).questionKey,
@@ -283,7 +306,8 @@ final class AIWorkbenchPresentationTests: XCTestCase {
             provenance: AIWorkbenchProvenance(
                 mode: .breakdown,
                 goal: "发布 1.0",
-                contextFingerprint: "context-a"
+                contextFingerprint: "context-a",
+                selectedGoalFingerprint: "selected-a"
             ),
             result: result
         )
@@ -292,7 +316,8 @@ final class AIWorkbenchPresentationTests: XCTestCase {
             state: .result(session),
             currentMode: .breakdown,
             currentGoal: "发布 2.0",
-            currentContextFingerprint: "context-a"
+            currentContextFingerprint: "context-a",
+            currentSelectedGoalFingerprint: "selected-a"
         )
         XCTAssertEqual(stale.session, session)
         XCTAssertFalse(stale.isFresh)
@@ -305,7 +330,8 @@ final class AIWorkbenchPresentationTests: XCTestCase {
             ),
             currentMode: .breakdown,
             currentGoal: "发布 1.0",
-            currentContextFingerprint: "context-a"
+            currentContextFingerprint: "context-a",
+            currentSelectedGoalFingerprint: "selected-a"
         )
         XCTAssertTrue(fresh.isFresh)
         XCTAssertTrue(fresh.showsRetainedResult)
@@ -316,9 +342,20 @@ final class AIWorkbenchPresentationTests: XCTestCase {
             state: .result(session),
             currentMode: .breakdown,
             currentGoal: "发布 1.0",
-            currentContextFingerprint: "context-a"
+            currentContextFingerprint: "context-a",
+            currentSelectedGoalFingerprint: "selected-a"
         )
         XCTAssertEqual(current.currentResultSource, .managed)
+
+        let changedSelection = AIWorkbenchSessionPresentation(
+            state: .result(session),
+            currentMode: .breakdown,
+            currentGoal: "发布 1.0",
+            currentContextFingerprint: "context-a",
+            currentSelectedGoalFingerprint: "selected-b"
+        )
+        XCTAssertFalse(changedSelection.isFresh)
+        XCTAssertTrue(changedSelection.showsStaleResult)
     }
 
     private func task(status: String, dueDate: Date?, isArchived: Bool) -> AIAssistantTaskSnapshot {

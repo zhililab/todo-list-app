@@ -15,6 +15,8 @@
 		0B02CD5F622A8E0BF79CEDA7 /* CompanionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D35EC4B8B50A0245829F8E2 /* CompanionView.swift */; };
 		0FD1C3C5EA661D88A2C7DF62 /* AIPlanServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC06109796CD1E0761A5A928 /* AIPlanServiceTests.swift */; };
 		116511821D21B114E11DBF4F /* AIBriefCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235A925D2AE3CC36574ECDB2 /* AIBriefCache.swift */; };
+		1639BF0121EC6D8F1EE46446 /* AISelectedGoalContextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8238F073D2BEE4D085729096 /* AISelectedGoalContextTests.swift */; };
+		19194D127B83C752D2062692 /* AIGoalPickerPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 616F4C4FEABACCD988B12443 /* AIGoalPickerPresentationTests.swift */; };
 		1BA7F18DC57B1C845CA4CEFA /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = EB36783A2543EFD232A040BC /* PrivacyInfo.xcprivacy */; };
 		1D1977CD84CB69CB2277B805 /* AIWorkbenchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D447E4FB1739A17DE2E2619 /* AIWorkbenchView.swift */; };
 		1D3279362AC2A51C84E91C01 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09F83C4BEA09B0EBD61E42B7 /* Localization.swift */; };
@@ -42,6 +44,7 @@
 		5DE5A8FDE6A5A5271B86EB42 /* AIBriefingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8B9A2487E4D2FF35C4E1249 /* AIBriefingViewModel.swift */; };
 		67EDA3E2A43416AD48A253E6 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FADB2AFBE6328B86E4D75D9 /* DashboardView.swift */; };
 		694E6439FD4EDCCE4D69EC54 /* PremiumFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5A402057F3370B9DBCC1385 /* PremiumFeature.swift */; };
+		6B11A6B5E245C3E619EBAFE3 /* AIGoalPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B81752BCF55BC307E1D547 /* AIGoalPicker.swift */; };
 		6C4139FD8B8E95CF8672833B /* CompanionVoiceRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D6410018CD4276EAC139B46 /* CompanionVoiceRuntime.swift */; };
 		6C5C66170950527BFF59B626 /* NotificationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79080EC67B6B4507D2B2813B /* NotificationServiceTests.swift */; };
 		76F52352BA6ABACC4F6F089C /* AppIconAssetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26ED38856EE17FDC2F4B0A43 /* AppIconAssetTests.swift */; };
@@ -76,6 +79,7 @@
 		C67430D7AA0AD45B14AABD76 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E36719B3FB38DBCFE6841B84 /* KeychainStore.swift */; };
 		CBFC2A1C15EF5B84AEDCB756 /* AIConsentManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C177E086F613A5FF593A0067 /* AIConsentManager.swift */; };
 		CD9DC8B7EE8373310DF0A2E2 /* ObsidianExporterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3889797B0ECF5BD9FF99F48 /* ObsidianExporterTests.swift */; };
+		CEA93897DBECFB3129DA6A14 /* AISelectedGoalContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5D12A2531DD23EE66857197 /* AISelectedGoalContext.swift */; };
 		D1BCF63F73820AF6920D8544 /* NotificationCenterClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A78402FDF557A6EAAE04C70E /* NotificationCenterClient.swift */; };
 		D27ECA40A702B76802D3D8D0 /* AIViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 926874143D7116117627D710 /* AIViewModel.swift */; };
 		D52E31D8E857242E177E4EEB /* ProjectConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F28115D0D4575ECEF3EE8F35 /* ProjectConfigurationTests.swift */; };
@@ -132,6 +136,7 @@
 		53C2C67C79898B65587069C7 /* AIAssistantService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAssistantService.swift; sourceTree = "<group>"; };
 		5D6410018CD4276EAC139B46 /* CompanionVoiceRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionVoiceRuntime.swift; sourceTree = "<group>"; };
 		60D7E634B3AE87AD992507A6 /* CompanionCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionCoreTests.swift; sourceTree = "<group>"; };
+		616F4C4FEABACCD988B12443 /* AIGoalPickerPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIGoalPickerPresentationTests.swift; sourceTree = "<group>"; };
 		62E30E0D30FC501FCE74FBD5 /* CompanionActionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionActionsTests.swift; sourceTree = "<group>"; };
 		6B9C745D366DC1FC569D11E2 /* QuotaClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaClientTests.swift; sourceTree = "<group>"; };
 		6E5739EDE21FF6440E1FAA4C /* DueDateParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DueDateParser.swift; sourceTree = "<group>"; };
@@ -140,6 +145,7 @@
 		74117E705A176A10440E111F /* TodoItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoItem.swift; sourceTree = "<group>"; };
 		75F008EF1A5DB89ACF93889F /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		79080EC67B6B4507D2B2813B /* NotificationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationServiceTests.swift; sourceTree = "<group>"; };
+		8238F073D2BEE4D085729096 /* AISelectedGoalContextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISelectedGoalContextTests.swift; sourceTree = "<group>"; };
 		827E7EE61B41BCEDA5EBF724 /* DashboardPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardPresentationTests.swift; sourceTree = "<group>"; };
 		829819F88B9F682D07F5020E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		82A0C1197AC9B4C03FAF32DC /* AIAssistantModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAssistantModels.swift; sourceTree = "<group>"; };
@@ -150,8 +156,10 @@
 		9E808DFDCA9C0258E4D43715 /* TodoNative.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TodoNative.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9FADB2AFBE6328B86E4D75D9 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		A41CAD61494D0DBD94D3E5AC /* TaskEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskEditView.swift; sourceTree = "<group>"; };
+		A5D12A2531DD23EE66857197 /* AISelectedGoalContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AISelectedGoalContext.swift; sourceTree = "<group>"; };
 		A60AFC32DE6259AF52A879DF /* CompanionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionViewModel.swift; sourceTree = "<group>"; };
 		A6B17497C301AC0BF32B29A4 /* SupportIdentifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportIdentifierTests.swift; sourceTree = "<group>"; };
+		A6B81752BCF55BC307E1D547 /* AIGoalPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIGoalPicker.swift; sourceTree = "<group>"; };
 		A78402FDF557A6EAAE04C70E /* NotificationCenterClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationCenterClient.swift; sourceTree = "<group>"; };
 		A8185176F4209CE9F3C757C2 /* AIPlanService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIPlanService.swift; sourceTree = "<group>"; };
 		A8B9A2487E4D2FF35C4E1249 /* AIBriefingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIBriefingViewModel.swift; sourceTree = "<group>"; };
@@ -225,7 +233,9 @@
 				F8156CB4FE1B5546234ECD3D /* AIBriefingViewModelTests.swift */,
 				278DEDDD9664D83822265902 /* AIConsentManagerTests.swift */,
 				4E01E879A12E1AE69F6662B8 /* AIDailyBriefPresentationTests.swift */,
+				616F4C4FEABACCD988B12443 /* AIGoalPickerPresentationTests.swift */,
 				BC06109796CD1E0761A5A928 /* AIPlanServiceTests.swift */,
+				8238F073D2BEE4D085729096 /* AISelectedGoalContextTests.swift */,
 				73D8544723E2C7B6515A0174 /* AIWorkbenchPresentationTests.swift */,
 				26ED38856EE17FDC2F4B0A43 /* AppIconAssetTests.swift */,
 				62E30E0D30FC501FCE74FBD5 /* CompanionActionsTests.swift */,
@@ -331,6 +341,7 @@
 			isa = PBXGroup;
 			children = (
 				431F1C9C0CDE4B524A53F63A /* AIDailyBriefCard.swift */,
+				A6B81752BCF55BC307E1D547 /* AIGoalPicker.swift */,
 				C59F7E234C746D81FB8C9287 /* AIWorkbenchResultView.swift */,
 				FAAC5CAA030B99B20615A9E7 /* FeatureGateBanner.swift */,
 				CF69B0283ECE18DA66EDB06D /* TodoCardView.swift */,
@@ -342,6 +353,7 @@
 			isa = PBXGroup;
 			children = (
 				82A0C1197AC9B4C03FAF32DC /* AIAssistantModels.swift */,
+				A5D12A2531DD23EE66857197 /* AISelectedGoalContext.swift */,
 				F5A402057F3370B9DBCC1385 /* PremiumFeature.swift */,
 				DAE95CB8396666E09EE725DF /* SubscriptionPresentation.swift */,
 				74117E705A176A10440E111F /* TodoItem.swift */,
@@ -479,7 +491,9 @@
 				CBFC2A1C15EF5B84AEDCB756 /* AIConsentManager.swift in Sources */,
 				8EB7D030AF688CBA1D30218F /* AIConsentView.swift in Sources */,
 				493EDC4ED67A8971736DB5DD /* AIDailyBriefCard.swift in Sources */,
+				6B11A6B5E245C3E619EBAFE3 /* AIGoalPicker.swift in Sources */,
 				E326B100BF314FCD0147FFB3 /* AIPlanService.swift in Sources */,
+				CEA93897DBECFB3129DA6A14 /* AISelectedGoalContext.swift in Sources */,
 				30785170ED4342D68DF58104 /* AIService.swift in Sources */,
 				D27ECA40A702B76802D3D8D0 /* AIViewModel.swift in Sources */,
 				36F55AB0368CD6C5F37343E0 /* AIWorkbenchResultView.swift in Sources */,
@@ -532,7 +546,9 @@
 				85F3AA2C2EEDADE309771DB4 /* AIBriefingViewModelTests.swift in Sources */,
 				C565C3062D4B0838D8257748 /* AIConsentManagerTests.swift in Sources */,
 				A50437C6A095E931B2D320C8 /* AIDailyBriefPresentationTests.swift in Sources */,
+				19194D127B83C752D2062692 /* AIGoalPickerPresentationTests.swift in Sources */,
 				0FD1C3C5EA661D88A2C7DF62 /* AIPlanServiceTests.swift in Sources */,
+				1639BF0121EC6D8F1EE46446 /* AISelectedGoalContextTests.swift in Sources */,
 				AE4CA439D6DEA98AAE117B6D /* AIWorkbenchPresentationTests.swift in Sources */,
 				76F52352BA6ABACC4F6F089C /* AppIconAssetTests.swift in Sources */,
 				E71E88FFE6F24E6D03C4ABC1 /* CompanionActionsTests.swift in Sources */,

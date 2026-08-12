@@ -122,6 +122,313 @@ final class AIBriefingViewModelTests: XCTestCase {
         }
     }
 
+    func testSelectingTaskFillsEditableGoalAndRetainsSelectionAfterTextEdit() {
+        let vm = makeViewModel()
+        vm.mode = .breakdown
+        let item = activeItem(title: "发布 1.0")
+
+        vm.selectGoalTask(item)
+
+        XCTAssertEqual(vm.selectedGoalTaskID, item.id)
+        XCTAssertEqual(vm.goal, "发布 1.0")
+
+        vm.goal = "先发布 iOS 版本"
+        XCTAssertEqual(vm.selectedGoalTaskID, item.id)
+    }
+
+    func testClearingAndReplacingSelectionPreserveExplicitTextOwnership() {
+        let vm = makeViewModel()
+        vm.mode = .breakdown
+        let first = activeItem(title: "发布 Web")
+        let second = activeItem(title: "发布 iOS")
+
+        vm.selectGoalTask(first)
+        vm.goal = "保留用户编辑"
+        vm.clearSelectedGoalTask()
+
+        XCTAssertNil(vm.selectedGoalTaskID)
+        XCTAssertEqual(vm.goal, "保留用户编辑")
+
+        vm.selectGoalTask(first)
+        vm.selectGoalTask(second)
+        XCTAssertEqual(vm.selectedGoalTaskID, second.id)
+        XCTAssertEqual(vm.goal, "发布 iOS")
+    }
+
+    func testLeavingBreakdownModeClearsSelectionButPreservesGoalText() {
+        let vm = makeViewModel()
+        vm.mode = .breakdown
+        let item = activeItem(title: "发布 1.0")
+        vm.selectGoalTask(item)
+        vm.goal = "先发布 iOS"
+
+        vm.mode = .review
+
+        XCTAssertNil(vm.selectedGoalTaskID)
+        XCTAssertEqual(vm.goal, "先发布 iOS")
+    }
+
+    func testReconcileClearsCompletedArchivedAndDeletedSelections() {
+        let vm = makeViewModel()
+        vm.mode = .breakdown
+
+        let completed = activeItem(title: "已完成")
+        vm.selectGoalTask(completed)
+        completed.status = .done
+        vm.reconcileSelectedGoal(in: [completed])
+        XCTAssertNil(vm.selectedGoalTaskID)
+        XCTAssertEqual(vm.goal, "已完成")
+
+        let archived = activeItem(title: "已归档")
+        vm.selectGoalTask(archived)
+        archived.isArchived = true
+        vm.reconcileSelectedGoal(in: [archived])
+        XCTAssertNil(vm.selectedGoalTaskID)
+        XCTAssertEqual(vm.goal, "已归档")
+
+        let deleted = activeItem(title: "已删除")
+        vm.selectGoalTask(deleted)
+        vm.reconcileSelectedGoal(in: [])
+        XCTAssertNil(vm.selectedGoalTaskID)
+        XCTAssertEqual(vm.goal, "已删除")
+    }
+
+    func testInvalidSelectedGoalReconcilesBeforeBlankGenerationEligibility() {
+        let vm = makeViewModel()
+        vm.mode = .breakdown
+        let item = activeItem(title: "发布 1.0")
+        vm.selectGoalTask(item)
+        vm.goal = " \n\t "
+
+        item.status = .done
+        vm.reconcileSelectedGoal(in: [item])
+
+        let selectedGoalFingerprint = vm.selectedGoalContext(in: [item])?.fingerprint
+        XCTAssertNil(vm.selectedGoalTaskID)
+        XCTAssertNil(selectedGoalFingerprint)
+        XCTAssertFalse(
+            AIWorkbenchModePresentation(mode: vm.mode).canGenerate(
+                goal: vm.goal,
+                selectedGoalFingerprint: selectedGoalFingerprint
+            )
+        )
+    }
+
+    func testReconcileArchivedStatusClearsAssociationAndInvalidatesResultWithoutChangingGoal() async {
+        let suggestion = suggestedTask(
+            id: "00000000-0000-0000-0000-000000000094",
+            title: "提交审核"
+        )
+        let service = ImmediateAssistantService()
+        service.workbenchResult = AIWorkbenchResult(
+            overview: "拆解结果",
+            suggestedTasks: [suggestion],
+            sections: [],
+            source: .managed
+        )
+        let vm = makeViewModel(service: service)
+        vm.mode = .breakdown
+        let item = activeItem(title: "发布 1.0")
+        vm.selectGoalTask(item)
+        await vm.runWorkbench(items: [item], health: 50, now: now)
+        guard case .result = vm.workbenchState else {
+            return XCTFail("Expected workbench result before reconciliation")
+        }
+
+        item.status = .archived
+        XCTAssertFalse(item.isArchived)
+        vm.reconcileSelectedGoal(in: [item])
+
+        XCTAssertNil(vm.selectedGoalTaskID)
+        XCTAssertEqual(vm.goal, "发布 1.0")
+        XCTAssertNil(vm.selectedGoalContext(in: [item]))
+        XCTAssertEqual(vm.workbenchState, .idle)
+        XCTAssertTrue(vm.selectedTaskIDs.isEmpty)
+    }
+
+    func testRunRestoresBlankGoalAndUsesLatestSelectedTaskSnapshot() async throws {
+        let service = ImmediateAssistantService()
+        let vm = makeViewModel(service: service)
+        vm.mode = .breakdown
+        let item = activeItem(title: "发布 1.0", acceptanceCriteria: "原验收")
+        vm.selectGoalTask(item)
+        vm.goal = " \n\t "
+        item.acceptanceCriteria = "最新验收"
+
+        await vm.runWorkbench(items: [item], health: 50, now: now)
+
+        XCTAssertEqual(vm.goal, "发布 1.0")
+        let selected = try XCTUnwrap(service.workbenchSelectedGoals.first ?? nil)
+        XCTAssertEqual(selected.id, item.id)
+        XCTAssertEqual(selected.acceptanceCriteria, "最新验收")
+    }
+
+    func testConsentRetryPreservesSelectedTaskRequestSnapshot() async throws {
+        let service = ImmediateAssistantService()
+        let route = AIConsentRoute(
+            identifier: "managed:worker.example:deepseek:selected",
+            recipientName: "Managed AI service and DeepSeek"
+        )
+        service.workbenchError = RemoteAIConsentError.needsConsent(route)
+        let consent = AIConsentManager(
+            consentVersion: "1",
+            storage: UserDefaults(suiteName: "AIBriefingViewModelTests.selected-consent.\(UUID().uuidString)")!
+        )
+        let vm = AIBriefingViewModel(
+            service: service,
+            cache: MemoryBriefCache(),
+            attemptTracker: MemoryBriefAttemptTracker(),
+            consentManager: consent
+        )
+        vm.mode = .breakdown
+        let item = activeItem(title: "发布 1.0", acceptanceCriteria: "原验收")
+        vm.selectGoalTask(item)
+
+        await vm.runWorkbench(items: [item], health: 50, now: now)
+        let originalSnapshot = try XCTUnwrap(service.workbenchSelectedGoals.first ?? nil)
+        item.acceptanceCriteria = "请求后变化"
+
+        service.workbenchError = nil
+        consent.acceptPendingConsent(at: now)
+        await vm.resolvePendingConsent(consent.resolution)
+
+        XCTAssertEqual(service.workbenchSelectedGoals.count, 2)
+        XCTAssertEqual(service.workbenchSelectedGoals[1], originalSnapshot)
+        XCTAssertEqual(originalSnapshot.acceptanceCriteria, "原验收")
+    }
+
+    func testClearingSelectedGoalCancelsPendingConsentRetry() async {
+        let service = ImmediateAssistantService()
+        let oldSuggestion = suggestedTask(
+            id: "00000000-0000-0000-0000-000000000091",
+            title: "旧任务"
+        )
+        service.workbenchResult = AIWorkbenchResult(
+            overview: "旧结果",
+            suggestedTasks: [oldSuggestion],
+            sections: [],
+            source: .managed
+        )
+        let route = AIConsentRoute(
+            identifier: "managed:worker.example:clear-selected",
+            recipientName: "Managed AI service and DeepSeek"
+        )
+        service.workbenchError = RemoteAIConsentError.needsConsent(route)
+        let consent = AIConsentManager(
+            consentVersion: "1",
+            storage: UserDefaults(suiteName: "AIBriefingViewModelTests.clear-selected.\(UUID().uuidString)")!
+        )
+        let vm = AIBriefingViewModel(
+            service: service,
+            cache: MemoryBriefCache(),
+            attemptTracker: MemoryBriefAttemptTracker(),
+            consentManager: consent
+        )
+        vm.mode = .breakdown
+        let oldGoal = activeItem(title: "旧目标")
+        vm.selectGoalTask(oldGoal)
+        await vm.runWorkbench(items: [oldGoal], health: 50, now: now)
+
+        vm.clearSelectedGoalTask()
+        service.workbenchError = nil
+        consent.acceptPendingConsent(at: now)
+        await vm.resolvePendingConsent(consent.resolution)
+
+        XCTAssertEqual(service.workbenchCalls.count, 1)
+        XCTAssertEqual(vm.workbenchState, .idle)
+        XCTAssertFalse(vm.selectedTaskIDs.contains(oldSuggestion.id))
+        XCTAssertNil(vm.selectedGoalTaskID)
+    }
+
+    func testReplacingSelectedGoalCancelsPendingConsentRetry() async {
+        let service = ImmediateAssistantService()
+        let oldSuggestion = suggestedTask(
+            id: "00000000-0000-0000-0000-000000000092",
+            title: "旧任务"
+        )
+        service.workbenchResult = AIWorkbenchResult(
+            overview: "旧结果",
+            suggestedTasks: [oldSuggestion],
+            sections: [],
+            source: .managed
+        )
+        let route = AIConsentRoute(
+            identifier: "managed:worker.example:replace-selected",
+            recipientName: "Managed AI service and DeepSeek"
+        )
+        service.workbenchError = RemoteAIConsentError.needsConsent(route)
+        let consent = AIConsentManager(
+            consentVersion: "1",
+            storage: UserDefaults(suiteName: "AIBriefingViewModelTests.replace-selected.\(UUID().uuidString)")!
+        )
+        let vm = AIBriefingViewModel(
+            service: service,
+            cache: MemoryBriefCache(),
+            attemptTracker: MemoryBriefAttemptTracker(),
+            consentManager: consent
+        )
+        vm.mode = .breakdown
+        let oldGoal = activeItem(title: "旧目标")
+        let replacement = activeItem(title: "新目标")
+        vm.selectGoalTask(oldGoal)
+        await vm.runWorkbench(items: [oldGoal], health: 50, now: now)
+
+        vm.selectGoalTask(replacement)
+        service.workbenchError = nil
+        consent.acceptPendingConsent(at: now)
+        await vm.resolvePendingConsent(consent.resolution)
+
+        XCTAssertEqual(service.workbenchCalls.count, 1)
+        XCTAssertEqual(vm.workbenchState, .idle)
+        XCTAssertFalse(vm.selectedTaskIDs.contains(oldSuggestion.id))
+        XCTAssertEqual(vm.selectedGoalTaskID, replacement.id)
+        XCTAssertEqual(vm.goal, replacement.title)
+    }
+
+    func testLeavingBreakdownModeCancelsPendingConsentRetry() async {
+        let service = ImmediateAssistantService()
+        let oldSuggestion = suggestedTask(
+            id: "00000000-0000-0000-0000-000000000093",
+            title: "旧任务"
+        )
+        service.workbenchResult = AIWorkbenchResult(
+            overview: "旧结果",
+            suggestedTasks: [oldSuggestion],
+            sections: [],
+            source: .managed
+        )
+        let route = AIConsentRoute(
+            identifier: "managed:worker.example:leave-breakdown",
+            recipientName: "Managed AI service and DeepSeek"
+        )
+        service.workbenchError = RemoteAIConsentError.needsConsent(route)
+        let consent = AIConsentManager(
+            consentVersion: "1",
+            storage: UserDefaults(suiteName: "AIBriefingViewModelTests.leave-breakdown.\(UUID().uuidString)")!
+        )
+        let vm = AIBriefingViewModel(
+            service: service,
+            cache: MemoryBriefCache(),
+            attemptTracker: MemoryBriefAttemptTracker(),
+            consentManager: consent
+        )
+        vm.mode = .breakdown
+        let oldGoal = activeItem(title: "旧目标")
+        vm.selectGoalTask(oldGoal)
+        await vm.runWorkbench(items: [oldGoal], health: 50, now: now)
+
+        vm.mode = .review
+        service.workbenchError = nil
+        consent.acceptPendingConsent(at: now)
+        await vm.resolvePendingConsent(consent.resolution)
+
+        XCTAssertEqual(service.workbenchCalls.count, 1)
+        XCTAssertEqual(vm.workbenchState, .idle)
+        XCTAssertFalse(vm.selectedTaskIDs.contains(oldSuggestion.id))
+        XCTAssertNil(vm.selectedGoalTaskID)
+        XCTAssertEqual(vm.mode, .review)
+    }
+
     func testTodayCacheWinsWithoutCallingService() async {
         let service = ImmediateAssistantService()
         let cache = MemoryBriefCache()
@@ -450,6 +757,53 @@ final class AIBriefingViewModelTests: XCTestCase {
         )
     }
 
+    func testSelectedTaskMetadataChangeMakesResultAndImportsStale() async throws {
+        let suggestion = suggestedTask(
+            id: "00000000-0000-0000-0000-000000000081",
+            title: "提交审核"
+        )
+        let service = ImmediateAssistantService()
+        service.workbenchResult = AIWorkbenchResult(
+            overview: "拆解结果",
+            suggestedTasks: [suggestion],
+            sections: [],
+            source: .managed
+        )
+        let vm = makeViewModel(service: service)
+        vm.mode = .breakdown
+        let item = activeItem(title: "发布 1.0", acceptanceCriteria: "TestFlight 通过")
+        vm.selectGoalTask(item)
+        await vm.runWorkbench(items: [item], health: 50, now: now)
+
+        item.acceptanceCriteria = "App Store 审核通过"
+        let context = AIAssistantContext(items: [item], health: 50)
+        let currentSelected = try XCTUnwrap(vm.selectedGoalContext(in: [item]))
+        let presentation = AIWorkbenchSessionPresentation(
+            state: vm.workbenchState,
+            currentMode: vm.mode,
+            currentGoal: vm.goal,
+            currentContextFingerprint: context.fingerprint,
+            currentSelectedGoalFingerprint: currentSelected.fingerprint
+        )
+
+        XCTAssertFalse(presentation.isFresh)
+        XCTAssertTrue(
+            vm.selectedTasksForImport(
+                existingTitles: [],
+                currentContext: context,
+                currentSelectedGoalFingerprint: currentSelected.fingerprint
+            ).isEmpty
+        )
+        XCTAssertEqual(
+            vm.selectedTasksForApplication(
+                existingItems: [item],
+                currentContext: context,
+                currentSelectedGoalFingerprint: currentSelected.fingerprint
+            ),
+            AIWorkbenchApplication(existingTaskIDs: [], newTasks: [])
+        )
+    }
+
     func testRerunQuotaFailureRetainsPreviousSessionAndRecovery() async {
         let context = AIAssistantContext(tasks: [], health: 50)
         let service = ControlledAssistantService()
@@ -733,6 +1087,23 @@ final class AIBriefingViewModelTests: XCTestCase {
 
     private func requireSendable<T: Sendable>(_: T.Type) {}
 
+    private func makeViewModel(
+        service: any AIAssistantServing = ImmediateAssistantService()
+    ) -> AIBriefingViewModel {
+        AIBriefingViewModel(
+            service: service,
+            cache: MemoryBriefCache(),
+            attemptTracker: MemoryBriefAttemptTracker()
+        )
+    }
+
+    private func activeItem(
+        title: String,
+        acceptanceCriteria: String = ""
+    ) -> TodoItem {
+        TodoItem(title: title, acceptanceCriteria: acceptanceCriteria)
+    }
+
     private func yieldUntil(_ predicate: () -> Bool) async {
         for _ in 0..<50 where !predicate() {
             await Task.yield()
@@ -744,6 +1115,7 @@ final class AIBriefingViewModelTests: XCTestCase {
 private final class ImmediateAssistantService: AIAssistantServing {
     private(set) var dailyBriefCalls: [(AIAssistantContext, Date)] = []
     private(set) var workbenchCalls: [(AIWorkbenchMode, String, AIAssistantContext, Date)] = []
+    private(set) var workbenchSelectedGoals: [AISelectedGoalContext?] = []
     private(set) var dailyBriefIntents: [RemoteAIRequestIntent] = []
     var dailyBriefError: Error?
     var workbenchError: Error?
@@ -773,11 +1145,13 @@ private final class ImmediateAssistantService: AIAssistantServing {
     func workbench(
         mode: AIWorkbenchMode,
         goal: String,
+        selectedGoal: AISelectedGoalContext?,
         context: AIAssistantContext,
         now: Date,
         intent: RemoteAIRequestIntent
     ) async throws -> AIWorkbenchResult {
         workbenchCalls.append((mode, goal, context, now))
+        workbenchSelectedGoals.append(selectedGoal)
         if let workbenchError { throw workbenchError }
         return workbenchResult
     }
@@ -808,6 +1182,7 @@ private final class ControlledAssistantService: AIAssistantServing {
     func workbench(
         mode: AIWorkbenchMode,
         goal: String,
+        selectedGoal: AISelectedGoalContext?,
         context: AIAssistantContext,
         now: Date,
         intent: RemoteAIRequestIntent
@@ -912,6 +1287,7 @@ private final class CancellationAwareAssistantService: AIAssistantServing {
     func workbench(
         mode: AIWorkbenchMode,
         goal: String,
+        selectedGoal: AISelectedGoalContext?,
         context: AIAssistantContext,
         now: Date,
         intent: RemoteAIRequestIntent

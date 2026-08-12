@@ -14,6 +14,7 @@ struct AIWorkbenchView: View {
     @State private var quotaSnapshot: QuotaSnapshot?
     @State private var confirmation: AIWorkbenchConfirmationPresentation?
     @State private var confirmationToken = UUID()
+    @State private var isGoalPickerPresented = false
 
     private let onRecovery: (AIAssistantRecovery) -> Void
 
@@ -33,6 +34,23 @@ struct AIWorkbenchView: View {
         AIAssistantContext(items: vm.unarchivedItems, health: vm.healthScore)
     }
 
+    private var goalPickerPresentation: AIGoalPickerPresentation {
+        AIGoalPickerPresentation(items: vm.items, query: "")
+    }
+
+    private var goalCandidateRevision: String {
+        AIGoalPickerPresentation.candidateRevision(items: vm.items)
+    }
+
+    private var selectedGoalCandidate: AIGoalPickerCandidate? {
+        guard let selectedGoalTaskID = briefing.selectedGoalTaskID else { return nil }
+        return goalPickerPresentation.all.first { $0.id == selectedGoalTaskID }
+    }
+
+    private var currentSelectedGoalFingerprint: String? {
+        briefing.selectedGoalContext(in: vm.items)?.fingerprint
+    }
+
     private var latestResultSource: AIAssistantSource? {
         workbenchPresentation.currentResultSource
     }
@@ -42,7 +60,8 @@ struct AIWorkbenchView: View {
             state: briefing.workbenchState,
             currentMode: briefing.mode,
             currentGoal: briefing.goal,
-            currentContextFingerprint: assistantContext.fingerprint
+            currentContextFingerprint: assistantContext.fingerprint,
+            currentSelectedGoalFingerprint: currentSelectedGoalFingerprint
         )
     }
 
@@ -68,7 +87,8 @@ struct AIWorkbenchView: View {
     private var selectedApplication: AIWorkbenchApplication {
         briefing.selectedTasksForApplication(
             existingItems: vm.unarchivedItems,
-            currentContext: assistantContext
+            currentContext: assistantContext,
+            currentSelectedGoalFingerprint: currentSelectedGoalFingerprint
         )
     }
 
@@ -85,6 +105,13 @@ struct AIWorkbenchView: View {
 
     private var isLoading: Bool {
         workbenchPresentation.phase == .loading
+    }
+
+    private var canGenerate: Bool {
+        modePresentation.canGenerate(
+            goal: briefing.goal,
+            selectedGoalFingerprint: currentSelectedGoalFingerprint
+        )
     }
 
     private var accessibilityAnnouncement: String? {
@@ -152,6 +179,10 @@ struct AIWorkbenchView: View {
                     argument: announcement
                 )
             }
+            .onAppear(perform: reconcileSelectedGoal)
+            .onChange(of: goalCandidateRevision) {
+                reconcileSelectedGoal()
+            }
             .task(id: quotaConfigurationID) {
                 await refreshManagedQuota()
             }
@@ -160,6 +191,14 @@ struct AIWorkbenchView: View {
                     .padding(.horizontal, AppTheme.Spacing.md)
                     .padding(.top, AppTheme.Spacing.sm)
             }
+        }
+        .sheet(isPresented: $isGoalPickerPresented) {
+            AIGoalPicker(
+                items: vm.items,
+                selectedGoalTaskID: briefing.selectedGoalTaskID,
+                onSelect: selectGoalCandidate,
+                onDirectInput: useDirectGoalInput
+            )
         }
         .appBg()
     }
@@ -371,6 +410,29 @@ struct AIWorkbenchView: View {
                 .foregroundStyle(Color.appText)
                 .fixedSize(horizontal: false, vertical: true)
 
+            if briefing.mode == .breakdown {
+                if let selectedGoalCandidate {
+                    AISelectedGoalSummary(
+                        candidate: selectedGoalCandidate,
+                        onChange: { isGoalPickerPresented = true },
+                        onClear: briefing.clearSelectedGoalTask
+                    )
+                } else {
+                    Button {
+                        isGoalPickerPresented = true
+                    } label: {
+                        Label(
+                            Localization.t("ai.goalPicker.chooseExisting"),
+                            systemImage: "list.bullet.rectangle"
+                        )
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.accentBlue)
+                    .accessibilityLabel(Localization.t("ai.goalPicker.chooseExisting"))
+                }
+            }
+
             TextField(
                 Localization.t(modePresentation.placeholderKey),
                 text: $briefing.goal,
@@ -404,7 +466,7 @@ struct AIWorkbenchView: View {
                 .frame(maxWidth: .infinity, minHeight: 50)
             }
             .primaryActionButton()
-            .disabled(isLoading || !modePresentation.canGenerate(goal: briefing.goal))
+            .disabled(isLoading || !canGenerate)
             .accessibilityLabel(Localization.t(modePresentation.primaryActionKey))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -485,7 +547,7 @@ struct AIWorkbenchView: View {
         Button(Localization.t("ai.workbench.regenerate"), action: runWorkbench)
             .ghostButton()
             .frame(maxWidth: .infinity, minHeight: 50)
-            .disabled(isLoading || !modePresentation.canGenerate(goal: briefing.goal))
+            .disabled(isLoading || !canGenerate)
             .accessibilityLabel(Localization.t("ai.workbench.regenerate"))
     }
 
@@ -541,8 +603,29 @@ struct AIWorkbenchView: View {
             : "\(briefing.goal)\n\(prompt)"
     }
 
+    private func selectGoalCandidate(_ candidate: AIGoalPickerCandidate) {
+        guard
+            let currentItem = vm.items.first(where: { $0.id == candidate.id }),
+            AIGoalPickerCandidate(item: currentItem) != nil
+        else {
+            reconcileSelectedGoal()
+            return
+        }
+        briefing.selectGoalTask(currentItem)
+        isGoalPickerPresented = false
+    }
+
+    private func useDirectGoalInput() {
+        briefing.clearSelectedGoalTask()
+        isGoalPickerPresented = false
+    }
+
+    private func reconcileSelectedGoal() {
+        briefing.reconcileSelectedGoal(in: vm.items)
+    }
+
     private func runWorkbench() {
-        guard !isLoading, modePresentation.canGenerate(goal: briefing.goal) else { return }
+        guard !isLoading, canGenerate else { return }
         Task {
             await briefing.runWorkbench(
                 items: vm.unarchivedItems,

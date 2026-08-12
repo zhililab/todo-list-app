@@ -45,9 +45,17 @@ struct AIWorkbenchModePresentation: Equatable {
         }
     }
 
-    func canGenerate(goal: String) -> Bool {
-        mode != .breakdown
-            || !goal.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    func canGenerate(
+        goal: String,
+        selectedGoalFingerprint: String? = nil
+    ) -> Bool {
+        guard mode == .breakdown else { return true }
+        if !goal.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return true
+        }
+        return !(selectedGoalFingerprint ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .isEmpty
     }
 }
 
@@ -274,7 +282,8 @@ struct AIWorkbenchSessionPresentation: Equatable {
         state: AIWorkbenchState,
         currentMode: AIWorkbenchMode,
         currentGoal: String,
-        currentContextFingerprint: String
+        currentContextFingerprint: String,
+        currentSelectedGoalFingerprint: String? = nil
     ) {
         switch state {
         case .idle:
@@ -298,7 +307,8 @@ struct AIWorkbenchSessionPresentation: Equatable {
         let currentProvenance = AIWorkbenchProvenance(
             mode: currentMode,
             goal: currentGoal,
-            contextFingerprint: currentContextFingerprint
+            contextFingerprint: currentContextFingerprint,
+            selectedGoalFingerprint: currentSelectedGoalFingerprint
         )
         isFresh = session?.provenance == currentProvenance
         showsRetainedResult = session != nil && (phase == .loading || phase == .failed)

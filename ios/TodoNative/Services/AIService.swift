@@ -28,6 +28,7 @@ struct AIService {
         try await service.workbench(
             mode: mode,
             goal: goal,
+            selectedGoal: nil,
             context: AIAssistantContext(items: items, health: health),
             now: now,
             intent: .manual

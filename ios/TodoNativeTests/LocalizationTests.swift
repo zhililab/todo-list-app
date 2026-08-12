@@ -4,7 +4,7 @@ import XCTest
 @MainActor
 final class LocalizationTests: XCTestCase {
     private let languageKey = "app_language"
-    private let assistantFallbackKeys = [
+    private let requiredDirectKeys = [
         "ai.brief.title",
         "ai.brief.toolbar",
         "ai.brief.updatedAt",
@@ -110,7 +110,20 @@ final class LocalizationTests: XCTestCase {
         "ai.workbench.next",
         "ai.workbench.nextBody",
         "ai.workbench.nextPrompt",
-        "ai.workbench.nextPromptBody"
+        "ai.workbench.nextPromptBody",
+        "ai.goalPicker.title",
+        "ai.goalPicker.searchPlaceholder",
+        "ai.goalPicker.chooseExisting",
+        "ai.goalPicker.directInput",
+        "ai.goalPicker.selectedTask",
+        "ai.goalPicker.change",
+        "ai.goalPicker.clear",
+        "ai.goalPicker.doing",
+        "ai.goalPicker.todo",
+        "ai.goalPicker.empty",
+        "ai.goalPicker.priority",
+        "ai.goalPicker.dueDate",
+        "ai.goalPicker.selectionStatus"
     ]
 
     override func setUp() {
@@ -239,7 +252,7 @@ final class LocalizationTests: XCTestCase {
 
     func testAssistantFallbackCopyExistsDirectlyInEachLanguage() {
         for language in ["zh", "en"] {
-            for key in assistantFallbackKeys {
+            for key in requiredDirectKeys {
                 XCTAssertTrue(
                     Localization.hasTranslation(key, language: language),
                     "Missing direct \(language) translation for \(key)"

@@ -48,6 +48,7 @@ struct AIWorkbenchProvenance: Equatable, Sendable {
     let mode: AIWorkbenchMode
     let goal: String
     let contextFingerprint: String
+    let selectedGoalFingerprint: String?
 }
 
 struct AIWorkbenchSession: Equatable, Sendable {
@@ -73,6 +74,7 @@ struct AIWorkbenchRequest: Equatable, Sendable {
     let mode: AIWorkbenchMode
     let goal: String
     let contextFingerprint: String
+    let selectedGoal: AISelectedGoalContext?
 }
 
 @MainActor
@@ -99,12 +101,16 @@ final class AIBriefingViewModel: ObservableObject {
     @Published var mode: AIWorkbenchMode = .todayPlan {
         didSet {
             guard oldValue != mode else { return }
+            if mode != .breakdown {
+                selectedGoalTaskID = nil
+            }
             invalidateWorkbench()
         }
     }
     @Published var goal = ""
     @Published private(set) var workbenchState: AIWorkbenchState = .idle
     @Published private(set) var selectedTaskIDs: Set<UUID> = []
+    @Published private(set) var selectedGoalTaskID: UUID?
 
     private let service: any AIAssistantServing
     private let cache: any AIBriefCaching
@@ -200,17 +206,61 @@ final class AIBriefingViewModel: ObservableObject {
         goal = prefill
     }
 
+    func selectGoalTask(_ item: TodoItem) {
+        guard mode == .breakdown, let selected = AISelectedGoalContext(item: item) else {
+            return
+        }
+        invalidateWorkbench()
+        selectedGoalTaskID = selected.id
+        goal = selected.title
+    }
+
+    func clearSelectedGoalTask() {
+        guard selectedGoalTaskID != nil else { return }
+        selectedGoalTaskID = nil
+        invalidateWorkbench()
+    }
+
+    func reconcileSelectedGoal(in items: [TodoItem]) {
+        guard let selectedGoalTaskID else { return }
+        guard
+            mode == .breakdown,
+            let item = items.first(where: { $0.id == selectedGoalTaskID }),
+            AISelectedGoalContext(item: item) != nil
+        else {
+            self.selectedGoalTaskID = nil
+            invalidateWorkbench()
+            return
+        }
+    }
+
+    func selectedGoalContext(in items: [TodoItem]) -> AISelectedGoalContext? {
+        guard
+            mode == .breakdown,
+            let selectedGoalTaskID,
+            let item = items.first(where: { $0.id == selectedGoalTaskID })
+        else { return nil }
+        return AISelectedGoalContext(item: item)
+    }
+
     func runWorkbench(
         items: [TodoItem],
         health: Int,
         now: Date = Date()
     ) async {
+        reconcileSelectedGoal(in: items)
+        let selectedGoal = selectedGoalContext(in: items)
+        if let selectedGoal,
+           goal.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            goal = selectedGoal.title
+        }
         let context = AIAssistantContext(items: items, health: health)
         let request = AIWorkbenchRequest(
             id: UUID(),
             mode: mode,
             goal: goal,
-            contextFingerprint: context.fingerprint
+            contextFingerprint: context.fingerprint,
+            selectedGoal: selectedGoal
         )
         let previous = currentWorkbenchSession
         await executeWorkbench(
@@ -263,6 +313,7 @@ final class AIBriefingViewModel: ObservableObject {
             try await service.workbench(
                 mode: request.mode,
                 goal: request.goal,
+                selectedGoal: request.selectedGoal,
                 context: context,
                 now: now,
                 intent: .manual
@@ -285,7 +336,8 @@ final class AIBriefingViewModel: ObservableObject {
                     provenance: AIWorkbenchProvenance(
                         mode: request.mode,
                         goal: request.goal,
-                        contextFingerprint: request.contextFingerprint
+                        contextFingerprint: request.contextFingerprint,
+                        selectedGoalFingerprint: request.selectedGoal?.fingerprint
                     ),
                     result: result
                 )
@@ -327,14 +379,16 @@ final class AIBriefingViewModel: ObservableObject {
 
     func selectedTasksForImport(
         existingTitles: Set<String>,
-        currentContext: AIAssistantContext
+        currentContext: AIAssistantContext,
+        currentSelectedGoalFingerprint: String? = nil
     ) -> [AISuggestedTask] {
         guard
             let session = currentWorkbenchSession,
             session.provenance == AIWorkbenchProvenance(
                 mode: mode,
                 goal: goal,
-                contextFingerprint: currentContext.fingerprint
+                contextFingerprint: currentContext.fingerprint,
+                selectedGoalFingerprint: currentSelectedGoalFingerprint
             )
         else { return [] }
         var seen = Set(existingTitles.compactMap(Self.normalizedTitleKey))
@@ -361,14 +415,16 @@ final class AIBriefingViewModel: ObservableObject {
 
     func selectedTasksForApplication(
         existingItems: [TodoItem],
-        currentContext: AIAssistantContext
+        currentContext: AIAssistantContext,
+        currentSelectedGoalFingerprint: String? = nil
     ) -> AIWorkbenchApplication {
         guard
             let session = currentWorkbenchSession,
             session.provenance == AIWorkbenchProvenance(
                 mode: mode,
                 goal: goal,
-                contextFingerprint: currentContext.fingerprint
+                contextFingerprint: currentContext.fingerprint,
+                selectedGoalFingerprint: currentSelectedGoalFingerprint
             )
         else {
             return AIWorkbenchApplication(existingTaskIDs: [], newTasks: [])
@@ -413,11 +469,13 @@ final class AIBriefingViewModel: ObservableObject {
 
     func selectedImportCount(
         existingTitles: Set<String>,
-        currentContext: AIAssistantContext
+        currentContext: AIAssistantContext,
+        currentSelectedGoalFingerprint: String? = nil
     ) -> Int {
         selectedTasksForImport(
             existingTitles: existingTitles,
-            currentContext: currentContext
+            currentContext: currentContext,
+            currentSelectedGoalFingerprint: currentSelectedGoalFingerprint
         ).count
     }
 
@@ -527,6 +585,14 @@ final class AIBriefingViewModel: ObservableObject {
     }
 
     private func invalidateWorkbench() {
+        if let pendingConsentRequest {
+            switch pendingConsentRequest {
+            case .brief:
+                break
+            case .workbench:
+                self.pendingConsentRequest = nil
+            }
+        }
         activeWorkbenchTask?.cancel()
         activeWorkbenchTask = nil
         activeWorkbenchRequest = nil

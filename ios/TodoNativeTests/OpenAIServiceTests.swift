@@ -356,7 +356,7 @@ final class OpenAIServiceTests: XCTestCase {
         defer {
             restore(oldQuota, forKey: quotaKey)
         }
-        UserDefaults.standard.removeObject(forKey: quotaKey)
+        UserDefaults.standard.set("", forKey: quotaKey)
         OpenAIService.saveAPIKey("")
 
         let routed = try await OpenAIService.callOpenAIWithSource(

@@ -168,12 +168,98 @@ final class AIAssistantServiceTests: XCTestCase {
             let result = try await service.workbench(
                 mode: .breakdown,
                 goal: "发布版本",
+                selectedGoal: nil,
                 context: context,
                 now: Date()
             )
 
             XCTAssertEqual(result.source, .local)
             XCTAssertGreaterThanOrEqual(result.suggestedTasks.count, 3)
+        }
+    }
+
+    func testBreakdownPromptIncludesCanonicalSelectedTaskContext() async throws {
+        let item = TodoItem(
+            title: "发布 1.0",
+            context: "面向首批用户",
+            acceptanceCriteria: "TestFlight 通过",
+            nextPrompt: "列出发布检查项",
+            taskType: .product,
+            estimatedMinutes: 45,
+            priority: 5,
+            status: .doing,
+            dueDate: Date(timeIntervalSince1970: 1_786_291_200)
+        )
+        item.id = UUID(uuidString: "00000000-0000-0000-0000-000000000041")!
+        let selected = try XCTUnwrap(AISelectedGoalContext(item: item))
+        let transport = StubTransport(source: .managed, result: .success(validTasksJSON))
+        let service = LiveAIAssistantService(transport: transport)
+
+        _ = try await service.workbench(
+            mode: .breakdown,
+            goal: "准备发布",
+            selectedGoal: selected,
+            context: context,
+            now: Date(timeIntervalSince1970: 1_786_200_000),
+            intent: .manual
+        )
+
+        let prompt = try XCTUnwrap(transport.calls.first?.prompt)
+        let selectedLine = try XCTUnwrap(
+            prompt.split(separator: "\n").map(String.init).first {
+                $0.hasPrefix("selectedTask=")
+            }
+        )
+        let json = String(selectedLine.dropFirst("selectedTask=".count))
+        let object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any]
+        )
+
+        XCTAssertEqual(json, selected.promptJSON)
+        XCTAssertEqual(
+            Set(object.keys),
+            [
+                "id", "title", "context", "acceptanceCriteria", "nextPrompt",
+                "taskType", "priority", "estimatedMinutes", "dueDate"
+            ]
+        )
+        XCTAssertEqual(object["id"] as? String, item.id.uuidString)
+        XCTAssertEqual(object["title"] as? String, "发布 1.0")
+        XCTAssertEqual(object["context"] as? String, "面向首批用户")
+        XCTAssertEqual(object["acceptanceCriteria"] as? String, "TestFlight 通过")
+        XCTAssertEqual(object["nextPrompt"] as? String, "列出发布检查项")
+        XCTAssertEqual(object["taskType"] as? String, TaskType.product.rawValue)
+        XCTAssertEqual(object["priority"] as? Int, 5)
+        XCTAssertEqual(object["estimatedMinutes"] as? Int, 45)
+        XCTAssertNotNil(object["dueDate"] as? String)
+        XCTAssertFalse(prompt.contains("Optional("))
+        XCTAssertFalse(prompt.contains("0x"))
+    }
+
+    func testNonBreakdownAndFreeInputPromptsOmitSelectedTaskContext() async throws {
+        let item = TodoItem(title: "发布 1.0", status: .doing)
+        let selected = try XCTUnwrap(AISelectedGoalContext(item: item))
+        let cases: [(mode: AIWorkbenchMode, selectedGoal: AISelectedGoalContext?, response: String)] = [
+            (.todayPlan, selected, validTasksJSON),
+            (.review, selected, validReviewJSON),
+            (.breakdown, nil, validTasksJSON)
+        ]
+
+        for testCase in cases {
+            let transport = StubTransport(source: .managed, result: .success(testCase.response))
+            let service = LiveAIAssistantService(transport: transport)
+
+            _ = try await service.workbench(
+                mode: testCase.mode,
+                goal: testCase.mode == .breakdown ? "自由输入目标" : "",
+                selectedGoal: testCase.selectedGoal,
+                context: context,
+                now: Date(timeIntervalSince1970: 1_786_200_000),
+                intent: .manual
+            )
+
+            let prompt = try XCTUnwrap(transport.calls.first?.prompt)
+            XCTAssertFalse(prompt.contains("selectedTask="), testCase.mode.rawValue)
         }
     }
 
@@ -205,6 +291,7 @@ final class AIAssistantServiceTests: XCTestCase {
             _ = try await service.workbench(
                 mode: .breakdown,
                 goal: "发布版本",
+                selectedGoal: nil,
                 context: context,
                 now: Date(),
                 intent: .manual
@@ -243,6 +330,7 @@ final class AIAssistantServiceTests: XCTestCase {
         let result = try await service.workbench(
             mode: .breakdown,
             goal: "发布版本",
+            selectedGoal: nil,
             context: context,
             now: Date(),
             intent: .manual
@@ -261,6 +349,7 @@ final class AIAssistantServiceTests: XCTestCase {
         let result = try await service.workbench(
             mode: .review,
             goal: "",
+            selectedGoal: nil,
             context: context,
             now: Date()
         )
