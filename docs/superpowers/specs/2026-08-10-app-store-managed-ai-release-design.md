@@ -7,7 +7,7 @@
 ## 首发产品边界
 
 - 平台：iOS 17+，同时支持 iPhone 和 iPad。
-- 商业模式：自动续费月度和年度订阅，Product ID 固定为 `com.zhili.todo.premium.monthly` 与 `com.zhili.todo.premium.yearly`，并置于同一个 Subscription Group。
+- 商业模式：自动续费月度和年度订阅，Product ID 固定为 `com.zhili.todo.premium.monthly.v2` 与 `com.zhili.todo.premium.yearly.v2`，并置于同一个 Subscription Group。
 - 托管 AI：无自带 API Key 时使用生产 quota worker；免费额度为 10 次，订阅用户为每日 20 次。
 - 自带 Key：用户选择的兼容服务商直接处理请求；仍须在首次远程调用前同意数据传输。
 - 不包含用户账号、云端任务同步、广告、追踪或推送通知。任务、聊天历史和 API 配置默认存于本机。

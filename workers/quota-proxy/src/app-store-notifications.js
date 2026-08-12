@@ -9,8 +9,8 @@ import {
 } from './entitlement-coordinator.js';
 
 const PRODUCT_IDS = [
-  'com.zhili.todo.premium.monthly',
-  'com.zhili.todo.premium.yearly',
+  'com.zhili.todo.premium.monthly.v2',
+  'com.zhili.todo.premium.yearly.v2',
 ];
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const APPLE_ID_PATTERN = /^[1-9][0-9]{0,18}$/;

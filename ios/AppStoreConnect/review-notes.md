@@ -17,8 +17,8 @@ Consent can be declined; no remote request is sent and local planning remains av
 
 Monthly and yearly subscriptions use StoreKit 2:
 
-- `com.zhili.todo.premium.monthly`
-- `com.zhili.todo.premium.yearly`
+- `com.zhili.todo.premium.monthly.v2`
+- `com.zhili.todo.premium.yearly.v2`
 
 Use a Sandbox Apple Account to purchase. Restore Purchases is available in both the paywall and Settings. A verified, unexpired, non-revoked current entitlement unlocks premium features; expiry or revocation removes the local entitlement after an entitlement refresh/relaunch. The seven-day experience shown by the app is local to the device and is not an App Store introductory offer.
 
@@ -65,8 +65,8 @@ The production managed AI endpoint is currently absent. For a build submitted in
 | Scenario | Device/account state | Expected evidence |
 |---|---|---|
 | Fresh install, no purchase | New install, Sandbox account signed in | App opens without app account; local 7-day experience disclosure is visible; StoreKit products load. |
-| Monthly purchase | `com.zhili.todo.premium.monthly` | Verified transaction finishes; local premium features unlock; product price comes from StoreKit. |
-| Yearly purchase | `com.zhili.todo.premium.yearly` | Same as monthly; billing period/display text matches StoreKit. |
+| Monthly purchase | `com.zhili.todo.premium.monthly.v2` | Verified transaction finishes; local premium features unlock; product price comes from StoreKit. |
+| Yearly purchase | `com.zhili.todo.premium.yearly.v2` | Same as monthly; billing period/display text matches StoreKit. |
 | User cancels/pending/unverified | Exercise each StoreKit test state | No false premium entitlement; localized status/error is visible. |
 | Restore | Reinstall or second test device using same Sandbox Apple Account | Restore Purchases calls App Store sync and current entitlement unlocks locally. |
 | Expired | Accelerated renewal/expiry | Refresh or relaunch removes local premium entitlement after expiration. |

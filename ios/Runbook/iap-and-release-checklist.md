@@ -19,8 +19,8 @@ Bundle ID：`com.zhili.todo-native`
 
 - [x] Bundle ID 配置为 `com.zhili.todo-native`。
 - [x] StoreKit 2 商品白名单：
-  - `com.zhili.todo.premium.monthly`
-  - `com.zhili.todo.premium.yearly`
+  - `com.zhili.todo.premium.monthly.v2`
+  - `com.zhili.todo.premium.yearly.v2`
 - [x] 购买、恢复、`Transaction.currentEntitlements` 与 `Transaction.updates` 已实现。
 - [x] 本地 premium gating 只接受已验证、未过期且未撤销的白名单商品。
 - [x] Paywall 从 StoreKit 展示本地化价格/周期，并提供自动续订、取消、Privacy 与 Terms 披露。

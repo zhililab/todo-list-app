@@ -63,7 +63,7 @@
               "locale" : "zh_CN"
             }
           ],
-          "productID" : "com.zhili.todo.premium.monthly",
+          "productID" : "com.zhili.todo.premium.monthly.v2",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "Todo Premium Monthly",
           "subscriptionGroupID" : "6D7D5B1A",
@@ -98,7 +98,7 @@
               "locale" : "zh_CN"
             }
           ],
-          "productID" : "com.zhili.todo.premium.yearly",
+          "productID" : "com.zhili.todo.premium.yearly.v2",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "Todo Premium Yearly",
           "subscriptionGroupID" : "6D7D5B1A",

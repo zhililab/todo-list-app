@@ -38,7 +38,7 @@ final class SubscriptionPresentationTests: XCTestCase {
 
     func testMonthlySubscriptionUsesStoreKitPriceAndBillingCycle() throws {
         let source = SubscriptionProductFacts(
-            id: "com.zhili.todo.premium.monthly",
+            id: "com.zhili.todo.premium.monthly.v2",
             displayName: "Monthly Premium",
             displayPrice: "$4.99",
             subscriptionPeriod: .init(value: 1, unit: .month),
@@ -68,7 +68,7 @@ final class SubscriptionPresentationTests: XCTestCase {
             paymentMode: .freeTrial
         )
         let source = SubscriptionProductFacts(
-            id: "com.zhili.todo.premium.yearly",
+            id: "com.zhili.todo.premium.yearly.v2",
             displayName: "Yearly Premium",
             displayPrice: "$39.99",
             subscriptionPeriod: .init(value: 1, unit: .year),
@@ -101,7 +101,7 @@ final class SubscriptionPresentationTests: XCTestCase {
         let presentation = try XCTUnwrap(
             SubscriptionPresentation(
                 facts: .init(
-                    id: "com.zhili.todo.premium.monthly",
+                    id: "com.zhili.todo.premium.monthly.v2",
                     displayName: "Monthly Premium",
                     displayPrice: "¥4.99",
                     subscriptionPeriod: .init(value: 1, unit: .month),
@@ -123,7 +123,7 @@ final class SubscriptionPresentationTests: XCTestCase {
         let presentation = try XCTUnwrap(
             SubscriptionPresentation(
                 facts: .init(
-                    id: "com.zhili.todo.premium.monthly",
+                    id: "com.zhili.todo.premium.monthly.v2",
                     displayName: "Monthly Premium",
                     displayPrice: "$4.99",
                     subscriptionPeriod: .init(value: 1, unit: .month),

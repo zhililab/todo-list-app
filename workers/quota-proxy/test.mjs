@@ -167,8 +167,8 @@ function fixtureVerificationOptions(overrides = {}) {
     bundleId: 'com.zhili.todo-native',
     environment: 'Sandbox',
     productIds: [
-      'com.zhili.todo.premium.monthly',
-      'com.zhili.todo.premium.yearly',
+      'com.zhili.todo.premium.monthly.v2',
+      'com.zhili.todo.premium.yearly.v2',
     ],
     now: FIXTURE_NOW_MS,
     trustedRoots: [fixtureCertificates.root],
@@ -342,7 +342,7 @@ function makeJwt(payload) {
 function makeValidPayload(overrides = {}) {
   return {
     exp: Math.floor(Date.now() / 1000) + 3600,
-    productId: 'com.zhili.todo.premium.monthly',
+    productId: 'com.zhili.todo.premium.monthly.v2',
     bundleId: 'com.zhili.todo',
     expiresDate: Date.now() + 3600e3,
     ...overrides,
@@ -1049,7 +1049,7 @@ test('register-pro rejects the former debug bypass and accepts a signed yearly p
   const normal = makeEnv();
   const yearly = await registerPro(normal.env, VALID_DEVICE_ID, {
     transactionJwt: await signFixtureJws(validTransaction({
-      productId: 'com.zhili.todo.premium.yearly',
+      productId: 'com.zhili.todo.premium.yearly.v2',
     })),
   }, {
     now: FIXTURE_NOW_MS,
@@ -1072,8 +1072,8 @@ test('register-pro rejects disabled debug, expired, unknown product, and missing
 
 test('App Store verifier accepts valid ES256 monthly and yearly transactions through the injected test root', async () => {
   for (const productId of [
-    'com.zhili.todo.premium.monthly',
-    'com.zhili.todo.premium.yearly',
+    'com.zhili.todo.premium.monthly.v2',
+    'com.zhili.todo.premium.yearly.v2',
   ]) {
     const verified = await verifyAppStoreTransaction(
       await signFixtureJws(validTransaction({ productId })),
@@ -1114,7 +1114,7 @@ test('App Store verifier rejects altered payloads and raw ES256 signatures', asy
   const jws = await signFixtureJws();
   const [originalHeader, , originalSignature] = jws.split('.');
   const alteredPayload = Buffer.from(JSON.stringify(validTransaction({
-    productId: 'com.zhili.todo.premium.yearly',
+    productId: 'com.zhili.todo.premium.yearly.v2',
   }))).toString('base64url');
   await expectJwsError(`${originalHeader}.${alteredPayload}.${originalSignature}`, 'invalid_signature');
   await expectJwsError(alterJwsSegment(jws, 2), 'invalid_signature');

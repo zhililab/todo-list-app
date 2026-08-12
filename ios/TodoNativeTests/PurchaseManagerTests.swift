@@ -65,10 +65,13 @@ final class PurchaseManagerTests: XCTestCase {
 
     func testOnlyApprovedProductIDsAreProcessedFromTransactionUpdates() {
         XCTAssertTrue(PurchaseManager.shouldProcessTransaction(
-            productID: "com.zhili.todo.premium.monthly"
+            productID: "com.zhili.todo.premium.monthly.v2"
         ))
         XCTAssertTrue(PurchaseManager.shouldProcessTransaction(
-            productID: "com.zhili.todo.premium.yearly"
+            productID: "com.zhili.todo.premium.yearly.v2"
+        ))
+        XCTAssertFalse(PurchaseManager.shouldProcessTransaction(
+            productID: "com.zhili.todo.premium.monthly"
         ))
         XCTAssertFalse(PurchaseManager.shouldProcessTransaction(productID: "unrelated.product"))
     }

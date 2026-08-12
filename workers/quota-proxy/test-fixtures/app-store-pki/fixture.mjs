@@ -76,7 +76,7 @@ export function validTransaction(overrides = {}) {
   return {
     bundleId: 'com.zhili.todo-native',
     environment: 'Sandbox',
-    productId: 'com.zhili.todo.premium.monthly',
+    productId: 'com.zhili.todo.premium.monthly.v2',
     expiresDate: Date.UTC(2030, 0, 1, 0, 0, 0),
     signedDate: FIXTURE_NOW_MS,
     transactionId: '2000000000000001',

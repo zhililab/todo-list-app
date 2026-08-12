@@ -68,7 +68,7 @@ X-Device-Id: <uuid>
 - proExpiry KV: `pro:{deviceId}`（ISO Date）
 - daily KV: `daily:{deviceId}:{YYYY-MM-DD}`（数字）
 - DEEPSEEK_API_KEY env (secret)
-- 端点三件套按契约；免费额度逻辑、Pro 日额度逻辑、JWT 验签（仅 exp 校验 + productId 白名单 `com.zhili.todo.premium.monthly` / `com.zhili.todo.premium.yearly`，release 环境由 ALLOW_DEBUG_PRO 控制）
+- 端点三件套按契约；免费额度逻辑、Pro 日额度逻辑、JWT 验签（仅 exp 校验 + productId 白名单 `com.zhili.todo.premium.monthly.v2` / `com.zhili.todo.premium.yearly.v2`，release 环境由 ALLOW_DEBUG_PRO 控制）
 - 透传：fetch `https://api.deepseek.com/chat/completions`，Authorization: Bearer DEEPSEEK_API_KEY
 - 2xx 才递增计数；错误透传状态码
 - commit: `feat(worker): quota proxy with free/pro limits`

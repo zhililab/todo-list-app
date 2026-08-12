@@ -43,8 +43,8 @@ final class PurchaseManager: ObservableObject {
     private var monitorTask: Task<Void, Never>?
 
     static let approvedProductIDs: Set<String> = [
-        "com.zhili.todo.premium.monthly",
-        "com.zhili.todo.premium.yearly"
+        "com.zhili.todo.premium.monthly.v2",
+        "com.zhili.todo.premium.yearly.v2"
     ]
 
     static func shouldProcessTransaction(productID: String) -> Bool {

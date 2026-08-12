@@ -6,7 +6,7 @@ Bundle ID：`com.zhili.todo-native`
 证据基线分层：
 
 - 产品验证 HEAD：`3f38fb9f2e16221545f19eef839f04051ded74b7`（tree `91be5883d540541250fa544b7816e44b81626ac0`）。这是历史规整后的可复现产品树；2026-08-12 在该规整树上 fresh 验证根目录 `136/136`、Worker `67/67`、iOS `367/367`，Debug 与 Release 模拟器 build 均通过。
-- Worker 部署版本：Production deployment `7df8cd2a-3970-46bf-bbec-adb759fe5ac8` / version `5452a702-104d-4238-a8fc-accaa7709eaf`；Sandbox deployment `acb0544d-3601-4a8b-a288-f030e40a3db1` / version `1d994964-0990-4464-bf83-2c29da0ed20d`。这些是外部控制面版本，不等同于 Git HEAD。
+- Worker 部署版本：2026-08-12 将 App Store Connect 实际产品 ID `.v2` 接入后，Production version `7144e311-b352-4e7f-9d70-68e65fdca98a`、Sandbox version `442678d5-7c3d-4871-b3cc-973d47cc8c6f` 均已部署。部署后两条公开额度路由均返回预期 HTTP `401` JSON `missing_device_id`。这些是外部控制面版本，不等同于 Git HEAD。
 - docs HEAD：本 docs commit（checkout 后用 `git rev-parse HEAD` 解析）。文档修复后的材料测试必须单独重跑；产品测试结果不归因于 docs-only HEAD。
 
 > 本文件把仓库证据、构建/测试、外部控制面和真实线上状态分开记录。`PASS` 只表示该行命令或静态检查通过，不代表 Apple Distribution 签名、App Store Connect 上传、TestFlight 或 App Review 已完成。
@@ -16,6 +16,8 @@ Bundle ID：`com.zhili.todo-native`
 ## 1. 结论
 
 当前结论：**BLOCKED — 材料仍不可提交。**
+
+- `PASS（订阅契约）`：App Store Connect 现有产品为 `com.zhili.todo.premium.monthly.v2` 与 `com.zhili.todo.premium.yearly.v2`；iOS、StoreKit 本地配置、Worker 交易验签与 Notifications V2 已统一为这两个 ID。当前门户仍将月付列为级别 1、年付列为级别 2；两者提供同一权益，应在提交审核前调整为同一级别并复核价格、本地化与审核截图。
 
 - `PASS（仓库/构建）`：2026-08-12 产品验证 HEAD `3f38fb9f2e16221545f19eef839f04051ded74b7` fresh 全量为根目录 `136/136`、Worker `67/67`、iOS `367/367`；Debug 与 Release 模拟器 build 通过。通用签名 Debug-iphoneos build 已在规整前的等价产品内容上通过，本轮未重复执行。2026-08-11 历史基线仍为根目录 `135/135`、Worker `66/66`、iOS `342/342`、Task 5 定向 `15/15`，以及当时的无签名 Release Archive。
 - `PASS（供应链/包检查）`：根目录与 Worker `npm audit` 均为 0；Wrangler dry-run 成功，包大小 `536.02 KiB` / gzip `93.64 KiB`，声明 `QUOTA` + `ENTITLEMENTS` + `DEVICE_PRIVACY` bindings。
@@ -32,8 +34,8 @@ Bundle ID：`com.zhili.todo-native`
 
 | 环境 | 当前 deployment / version | bindings（值已脱敏） | 只读路由检查 |
 |---|---|---|---|
-| Production `todo-quota-proxy` | deployment `7df8cd2a-3970-46bf-bbec-adb759fe5ac8`；version `5452a702-104d-4238-a8fc-accaa7709eaf`；`100%` | KV `QUOTA` (`7930375f712c4fb383fc6d424b0b733c`)；DO `ENTITLEMENTS` (`0513d124128c4477b971a3a7f6997a22`)；DO `DEVICE_PRIVACY` (`fab8ad3f426b44619a978de903ca72a2`)；secret names：`ALLOWED_ORIGINS`、`APP_STORE_APPLE_ID`、`APP_STORE_BUNDLE_ID`、`APP_STORE_ENVIRONMENT`、`DEEPSEEK_API_KEY`、`ERASURE_ADMIN_TOKEN` | `GET /proxy/quota` 未带 device ID：HTTP `401`，`application/json`，body code `missing_device_id` |
-| Sandbox `todo-quota-proxy-sandbox` | deployment `acb0544d-3601-4a8b-a288-f030e40a3db1`；version `1d994964-0990-4464-bf83-2c29da0ed20d`；`100%` | KV `QUOTA` (`0e064308deb54c12adc5a5bb544e6d1f`)；DO `ENTITLEMENTS` (`a44baa62f4484a9a921ca14d21aebae0`)；DO `DEVICE_PRIVACY` (`1316b52c29114073b049afd19cb44324`)；secret names：`APP_STORE_BUNDLE_ID`、`APP_STORE_ENVIRONMENT`、`DEEPSEEK_API_KEY`、`ERASURE_ADMIN_TOKEN` | `GET /proxy/quota` 未带 device ID：HTTP `401`，`application/json`，body code `missing_device_id` |
+| Production `todo-quota-proxy` | deployment `652b9351-7ea7-4279-b668-7e176c78a872`；version `7144e311-b352-4e7f-9d70-68e65fdca98a`；`100%` | KV `QUOTA`；DO `ENTITLEMENTS`；DO `DEVICE_PRIVACY`；secret names：`ALLOWED_ORIGINS`、`APP_STORE_APPLE_ID`、`APP_STORE_BUNDLE_ID`、`APP_STORE_ENVIRONMENT`、`DEEPSEEK_API_KEY`、`ERASURE_ADMIN_TOKEN` | `GET /proxy/quota` 未带 device ID：HTTP `401`，`application/json`，body code `missing_device_id` |
+| Sandbox `todo-quota-proxy-sandbox` | deployment `301541a7-7b6f-4b70-9be7-8ef3ca790f6f`；version `442678d5-7c3d-4871-b3cc-973d47cc8c6f`；`100%` | KV `QUOTA`；DO `ENTITLEMENTS`；DO `DEVICE_PRIVACY`；secret names：`APP_STORE_BUNDLE_ID`、`APP_STORE_ENVIRONMENT`、`DEEPSEEK_API_KEY`、`ERASURE_ADMIN_TOKEN` | `GET /proxy/quota` 未带 device ID：HTTP `401`，`application/json`，body code `missing_device_id` |
 
 Production 在 deployment `7df8cd2a-3970-46bf-bbec-adb759fe5ac8` 之前的精确 active baseline 已从连续 deployment history 恢复：deployment `2eed8a85-9752-4278-b2a9-0f5f7b396a29` 将 version `0cc40f76-4ecf-4fb6-b247-d645277dfc7f` 分配为 `100%`。因此历史流量基线可确定性还原，不是 unknown。需要注意：该旧 version 的只读详情不含 `DEEPSEEK_API_KEY` binding；稍后的 version `fde0b6a7-20b2-4f46-8549-59f724d5b52f` 虽包含该 secret，却未出现在 deployment history 中，不能替代“上线前 active baseline”。任何未来回退都必须由 owner 先评估 managed chat 失效风险，本次未执行回退。
 

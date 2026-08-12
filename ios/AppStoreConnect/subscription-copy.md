@@ -16,7 +16,7 @@ Bundle ID：`com.zhili.todo-native`
 
 ## 月度订阅
 
-- Product ID：`com.zhili.todo.premium.monthly`
+- Product ID：`com.zhili.todo.premium.monthly.v2`
 - Reference Name：`Todo Premium Monthly`
 - Duration：1 month
 - en-US Display Name：`Monthly Premium`
@@ -27,7 +27,7 @@ Bundle ID：`com.zhili.todo-native`
 
 ## 年度订阅
 
-- Product ID：`com.zhili.todo.premium.yearly`
+- Product ID：`com.zhili.todo.premium.yearly.v2`
 - Reference Name：`Todo Premium Yearly`
 - Duration：1 year
 - en-US Display Name：`Yearly Premium`

@@ -47,8 +47,8 @@ export { DevicePrivacyCoordinator } from './device-privacy-coordinator.js';
 const FREE_LIMIT = 10;
 const DAILY_LIMIT = 20;
 const PRO_PRODUCT_IDS = [
-  'com.zhili.todo.premium.monthly',
-  'com.zhili.todo.premium.yearly',
+  'com.zhili.todo.premium.monthly.v2',
+  'com.zhili.todo.premium.yearly.v2',
 ];
 const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions';
 const ENTITLEMENT_LIST_LIMIT = 100;

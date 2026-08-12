@@ -51,7 +51,7 @@
    - `xcodebuild -project ios/TodoNative.xcodeproj -scheme TodoNative -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=27.0' test`
    - 或 `xcodegen generate` 后在 Xcode 中按 `Cmd+U`
 5. 先在本地确认首页与任务流可用，再接入真实 AI 与付费。
-6. 再配置 IAP（`com.zhili.todo.premium.monthly` / `com.zhili.todo.premium.yearly`）；当前 7 天体验只保存在设备本地，不是 App Store Connect Introductory Offer。
+6. 再配置 IAP（`com.zhili.todo.premium.monthly.v2` / `com.zhili.todo.premium.yearly.v2`）；当前 7 天体验只保存在设备本地，不是 App Store Connect Introductory Offer。
 7. 按 `ios/Runbook/iap-and-release-checklist.md` 关闭外部 owner actions；生产 managed AI 缺失时保持 unavailable，并让元数据/截图/审核备注与实际构建一致。
 
 ## App Store Connect 材料

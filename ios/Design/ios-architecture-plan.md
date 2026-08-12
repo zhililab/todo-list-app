@@ -52,8 +52,8 @@
 
 - 先做 App 内“试用状态驱动 UI”（`canUsePremiumFeature`）
 - App Store Connect 配置订阅：
-  - 自动续费月度：`com.zhili.todo.premium.monthly`
-  - 自动续费年度：`com.zhili.todo.premium.yearly`
+  - 自动续费月度：`com.zhili.todo.premium.monthly.v2`
+  - 自动续费年度：`com.zhili.todo.premium.yearly.v2`
   - Intro Offer：7-day free trial（7 天）
 - 试用结束后进入“只保留免费功能 + 付费引导弹窗”降级逻辑
 - 上线前检查：
