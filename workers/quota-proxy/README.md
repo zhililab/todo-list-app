@@ -14,7 +14,7 @@ Base URL: `https://todo-quota-proxy.<subdomain>.workers.dev`
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | `/proxy/chat/completions` | 请求头 `X-Device-Id`；OpenAI 格式 body（`model` 强制为 `deepseek-v4-flash`）。无效输入在读取额度前拒绝；免费用完 → `402 quota_exceeded(kind=free)`；Pro 当日用完 → `402 quota_exceeded(kind=daily)`；上游错误 → 安全稳定的 `502 provider_error/provider_unavailable` 且不消耗配额；成功递增计数后返回上游响应。已删除设备 → `410 device_erased`。 |
+| POST | `/proxy/chat/completions` | 请求头 `X-Device-Id`；OpenAI 格式 body（`model` 强制为 `deepseek-v4-flash`，`max_tokens` 强制为 `2048`）。无效输入在读取额度前拒绝；免费用完 → `402 quota_exceeded(kind=free)`；Pro 当日用完 → `402 quota_exceeded(kind=daily)`；上游错误 → 安全稳定的 `502 provider_error/provider_unavailable` 且不消耗配额；成功递增计数后返回上游响应。已删除设备 → `410 device_erased`。 |
 | GET | `/proxy/quota` | 请求头 `X-Device-Id`。返回 `{"freeUsed":0,"freeLimit":10,"proUsed":0,"proLimit":20,"isPro":false,"today":"YYYY-MM-DD"}`；已删除设备 → `410 device_erased`。 |
 | POST | `/proxy/register-pro` | 请求体 `{"transactionJwt":"<jwsRepresentation>"}`。Apple ES256 JWS、完整证书链与交易字段全部通过 → `200 {"ok":true,"expiry":"<ISO>"}`；无效证据统一 `401 invalid_jwt`；缺少 App Store 配置 → `503 service_not_configured`；已删除设备 → `410 device_erased`。 |
 | POST | `/proxy/app-store-notifications` | App Store Server Notifications V2 回调，请求体 `{"signedPayload":"<JWS>"}`。业务通知同时验证外层与内层 JWS；`TEST` 验证外层签名和 App identity。成功幂等处理后只返回 `200 {"ok":true}`。 |
@@ -27,7 +27,7 @@ Base URL: `https://todo-quota-proxy.<subdomain>.workers.dev`
 - `X-Device-Id` 必须是客户端随机生成的匿名、不透明 ID：16–128 个字符，只允许 ASCII 字母、数字、`_`、`-`。不要发送邮箱、账号、路径或其他可识别信息。
 - JSON body 最大 **64 KiB**。
 - `messages` 必须包含 1–32 条；每条只接受 `system`、`user`、`assistant` role，`content` 必须是 1–16,000 字符的字符串。
-- 客户端提供的 `model` 会被忽略，上游始终使用 `deepseek-v4-flash`。
+- `model` 和 `max_tokens` 均由 Worker 管理，客户端无法修改；上游始终使用 `deepseek-v4-flash` 和最多 `2048` 个 completion tokens。
 - 绑定缺少 `QUOTA`、`ENTITLEMENTS` 或聊天请求缺少 `DEEPSEEK_API_KEY` 时返回 `503 service_not_configured`；响应不披露配置名、密钥或内部异常。
 
 ### 浏览器 CORS

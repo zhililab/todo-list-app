@@ -1047,12 +1047,14 @@ Verify Today loaded, stale, local fallback, quota failure, loading, and empty st
 
 ```bash
 cd ios
-xcodebuild -project TodoNative.xcodeproj -scheme TodoNative -destination 'id=00008150-001934920240401C' -derivedDataPath build/dd build
-xcrun devicectl device install app --device C3AC8A00-2E4A-5147-BBD4-2C843EF20846 /Users/lizhi/code/todo-list-app/ios/build/dd/Build/Products/Debug-iphoneos/TodoNative.app
-xcrun devicectl device process launch --device C3AC8A00-2E4A-5147-BBD4-2C843EF20846 com.zhili.todo-native
+xcodebuild -project TodoNative.xcodeproj -scheme TodoNative -showdestinations
+xcrun devicectl list devices
+xcodebuild -project TodoNative.xcodeproj -scheme TodoNative -destination 'id=<AVAILABLE_XCODE_DESTINATION_ID>' -derivedDataPath build/dd build
+xcrun devicectl device install app --device <AVAILABLE_COREDEVICE_ID> build/dd/Build/Products/Debug-iphoneos/TodoNative.app
+xcrun devicectl device process launch --device <AVAILABLE_COREDEVICE_ID> com.zhili.todo-native
 ```
 
-Expected: device build succeeds, installation reports bundle ID `com.zhili.todo-native`, and launch succeeds.
+Expected: select an available paired device from the fresh command output; build, installation, and launch succeed. Never copy either discovered identifier into tracked files or reports.
 
 - [ ] **Step 6: Final review and integration commit**
 

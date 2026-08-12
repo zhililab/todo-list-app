@@ -1,4 +1,5 @@
 export const MANAGED_MODEL = 'deepseek-v4-flash';
+export const MAX_COMPLETION_TOKENS = 2048;
 export const MAX_BODY_BYTES = 64 * 1024;
 export const MAX_MESSAGES = 32;
 export const MAX_CONTENT_CHARS = 16_000;
@@ -108,7 +109,7 @@ export async function parseChatBody(request) {
   ) {
     throw new ContractError(400, 'invalid_messages');
   }
-  return { ...body, model: MANAGED_MODEL };
+  return { ...body, model: MANAGED_MODEL, max_tokens: MAX_COMPLETION_TOKENS };
 }
 
 function configuredOrigins(env) {

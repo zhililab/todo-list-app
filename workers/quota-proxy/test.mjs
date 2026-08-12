@@ -941,6 +941,19 @@ test('client model is ignored and provider model is always deepseek-v4-flash', a
   assert.equal(lastUpstreamBody.model, 'deepseek-v4-flash');
 });
 
+test('managed requests force max_tokens to the fixed completion cap', async () => {
+  const clientValues = [undefined, 8192, 128, 0, -1, '4096', null];
+  for (const maxTokens of clientValues) {
+    const { env } = makeEnv();
+    const body = {
+      messages: [{ role: 'user', content: 'make a short plan' }],
+      ...(maxTokens === undefined ? {} : { max_tokens: maxTokens }),
+    };
+    assert.equal((await chatCompletions(env, chatReq(VALID_DEVICE_ID, body))).status, 200);
+    assert.equal(lastUpstreamBody.max_tokens, 2048);
+  }
+});
+
 test('free: 10 successes then quota_exceeded(free), preserving lifetime semantics', async () => {
   const { env, kv } = makeEnv();
   for (let i = 0; i < 10; i += 1) {
