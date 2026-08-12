@@ -57,6 +57,14 @@ final class ProjectConfigurationTests: XCTestCase {
         )
     }
 
+    func testCompiledTargetDeclaresNoNonExemptEncryption() {
+        XCTAssertEqual(
+            Bundle.main.object(forInfoDictionaryKey: "ITSAppUsesNonExemptEncryption") as? Bool,
+            false,
+            "The app only relies on exempt encryption supplied by the operating system for HTTPS transport."
+        )
+    }
+
     func testReleaseConfigurationAcceptsOnlyHTTPSManagedEndpoints() {
         let available = AppConfiguration(
             infoDictionary: ["ManagedAIBaseURL": "https://quota.example/v1"],

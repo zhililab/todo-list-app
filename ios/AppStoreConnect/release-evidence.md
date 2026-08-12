@@ -17,12 +17,13 @@ Bundle ID：`com.zhili.todo-native`
 
 当前结论：**BLOCKED — 材料仍不可提交。**
 
-- `PASS（订阅契约）`：App Store Connect 现有产品为 `com.zhili.todo.premium.monthly.v2` 与 `com.zhili.todo.premium.yearly.v2`；iOS、StoreKit 本地配置、Worker 交易验签与 Notifications V2 已统一为这两个 ID。当前门户仍将月付列为级别 1、年付列为级别 2；两者提供同一权益，应在提交审核前调整为同一级别并复核价格、本地化与审核截图。
+- `PASS（订阅契约）`：App Store Connect 现有产品为 `com.zhili.todo.premium.monthly.v2` 与 `com.zhili.todo.premium.yearly.v2`；iOS、StoreKit 本地配置、Worker 交易验签与 Notifications V2 已统一为这两个 ID。2026-08-12 门户已确认月付与年付均为级别 1，两项状态均为“准备提交”，订阅组已加入草稿审核。
+- `PASS（构建上传）`：2026-08-12 基于产品 HEAD `5665eaf` 先上传 `1.0.0 (2)`，App Store Connect 处理完成后提示缺少出口合规证明。仓库随后增加 `ITSAppUsesNonExemptEncryption=false`，并生成、上传替代构建 `1.0.0 (3)`；archive 内已确认该声明为 false，`xcodebuild -exportArchive` 返回 `Upload succeeded`。Distribution summary 确认 Apple Distribution、App Store provisioning、`get-task-allow=false`；包内包含 `PrivacyInfo.xcprivacy` 与 production `ManagedAIBaseURL`。build 3 的 App Store Connect 最终处理状态仍须独立复核，build 2 不用于最终审核。
 
-- `PASS（仓库/构建）`：2026-08-12 产品验证 HEAD `3f38fb9f2e16221545f19eef839f04051ded74b7` fresh 全量为根目录 `136/136`、Worker `67/67`、iOS `367/367`；Debug 与 Release 模拟器 build 通过。通用签名 Debug-iphoneos build 已在规整前的等价产品内容上通过，本轮未重复执行。2026-08-11 历史基线仍为根目录 `135/135`、Worker `66/66`、iOS `342/342`、Task 5 定向 `15/15`，以及当时的无签名 Release Archive。
+- `PASS（仓库/构建）`：2026-08-12 产品验证 HEAD `3f38fb9f2e16221545f19eef839f04051ded74b7` fresh 全量为根目录 `136/136`、Worker `67/67`、iOS `367/367`；build 3 加入出口合规声明后，iOS 全量为 `368/368`。Debug 与 Release 模拟器 build 通过。2026-08-11 历史基线仍为根目录 `135/135`、Worker `66/66`、iOS `342/342`、Task 5 定向 `15/15`，以及当时的无签名 Release Archive。
 - `PASS（供应链/包检查）`：根目录与 Worker `npm audit` 均为 0；Wrangler dry-run 成功，包大小 `536.02 KiB` / gzip `93.64 KiB`，声明 `QUOTA` + `ENTITLEMENTS` + `DEVICE_PRIVACY` bindings。
 - `PASS / BLOCKED（外部只读）`：Privacy、Terms、Support 三条公开 URL 均返回 HTTP 200 且正文包含支持邮箱；但线上 Privacy 尚未包含删除后的有限哈希保留披露，启用 managed AI 的 Path A 前必须重新发布并 live 核对。Terms 与 Support 当前通过。
-- `PASS（本机身份可用性）/ BLOCKED（发布闭环）`：2026-08-12 fresh `security find-identity -v -p codesigning` 显示 `3 valid identities found`，其中包括 `Apple Distribution: ZHI LI`；通用 Debug-iphoneos build 已使用 Apple Development 签名。当前 HEAD 尚未 fresh 执行或验证 Apple Distribution Archive、App Store IPA export、`get-task-allow=false`、上传或 ASC processing；provisioning/App Store profile、export 配置、上传和 TestFlight 仍是独立 gate。
+- `PASS（签名、导出、上传）/ PROCESSING（ASC）`：2026-08-12 build 3 已完成 signed Archive、Apple Distribution/App Store export 与 App Store Connect upload；Distribution summary 及签名包 entitlement 已复核。App Store Connect 已显示 build 3 正在处理，尚未选入版本或提交审核。
 - `PASS（仓库离线验证）`：Worker 已实现 Apple ES256 JWS、固定 Apple roots/完整证书链、bundle/environment/product/到期与 payload 撤销字段校验；App Store Server Notifications V2 的续费、到期、退款和撤销幂等处理也已实现。
 - `PASS（配置与 Worker 控制面）/ BLOCKED（端到端发布）`：当前 `Info.plist` / `Project.yml` 已配置 production `ManagedAIBaseURL`；production 与独立 Sandbox Worker 已有当前 deployment、KV、DO 及仅名称可见的 secrets 证据。App Store Connect Notifications V2 URL、Send Test Notification、Sandbox 真交易/通知以及指定 iPhone 上的 managed AI 交互仍未验证。离线验签不做 OCSP，发布负责人必须接受该边界或在上线前实现完整在线检查。
 - `PASS（仓库）/ BLOCKED（生产）`：`DEVICE_PRIVACY` 强一致 lease/erasure、Entitlement DO mapping 清理、raw device ID 消除及 owner runbook 已实现并测试；真实 Cloudflare 环境尚未完成脱敏 active-lease retry → erase → replay → read-back 演练。
@@ -53,7 +54,7 @@ Production 在 deployment `7df8cd2a-3970-46bf-bbec-adb759fe5ac8` 之前的精确
 | Debug build | **PASS** | `xcodebuild ... -configuration Debug ... build` | exit `0`；`** BUILD SUCCEEDED **` |
 | Code-signing identities | **PASS（身份可用性）** | `security find-identity -v -p codesigning` | 2026-08-12 fresh read-only check：exit `0`；`3 valid identities found`，包括 `Apple Distribution: ZHI LI`。不记录 identity hash、Team ID 或私钥材料。 |
 | Unsigned static Archive | **PASS（仅静态）** | `xcodebuild ... -configuration Release -destination 'generic/platform=iOS' -archivePath /private/tmp/todo-archive.3UdF8w/TodoNative.xcarchive CODE_SIGNING_ALLOWED=NO archive` | exit `0`；`** ARCHIVE SUCCEEDED **`。该 Archive **未签名、不是 App Store 可上传 Archive** |
-| Signed Archive/export/upload | **NOT RUN / BLOCKED** | Apple Distribution archive、`xcodebuild -exportArchive`、ASC upload | 当前 HEAD 尚未 fresh 执行或验证；identity 可用性不证明 provisioning/App Store profile、export options、上传、ASC processing 或 TestFlight。未虚构 Archive、IPA、上传或 processing 结果。 |
+| Signed Archive/export/upload | **PASS / PROCESSING** | Apple Distribution archive、`xcodebuild -exportArchive`、ASC upload | build 3 Archive、App Store export 与 upload 均成功；`get-task-allow=false`，ASC 已显示 build 3 正在处理。 |
 | Web production build | **PASS** | `npm run build` | exit `0`；production build 成功 |
 | Root / Worker dependency audit | **PASS** | `npm audit` / `cd workers/quota-proxy && npm audit` | 两处均 `0 vulnerabilities` |
 | Wrangler dry-run | **PASS（本地）** | `cd workers/quota-proxy && npx wrangler deploy --dry-run` | exit `0`；`536.02 KiB` / gzip `93.64 KiB`；bindings 为 `QUOTA`、`ENTITLEMENTS`、`DEVICE_PRIVACY` |
@@ -78,8 +79,8 @@ Production 在 deployment `7df8cd2a-3970-46bf-bbec-adb759fe5ac8` 之前的精确
 | StoreKit 测试配置 | **PASS** | Archive 内 `find ... -name '*.storekit'` 无结果 |
 | App icons | **PASS** | AppIcon source 13/13 `hasAlpha: no`；Archive 导出的 iPhone/iPad icon 2/2 `hasAlpha: no` |
 | DEBUG 通知测试入口 | **PASS** | Release Mach-O 对 `test-notification-` / `sendTestNotification` 的 raw、`strings` 和 symbol 检查均无命中；源码 UI/函数在 `#if DEBUG` 内 |
-| Release signing | **NOT RUN / BLOCKED** | 本机 Apple Distribution identity 可用，但当前 HEAD 尚未 fresh 生成或验证 Apple Distribution 签名包；provisioning/App Store profile 仍待核验。 |
-| `get-task-allow=false` | **NOT RUN / BLOCKED** | 该项必须从真实签名 app entitlement 读取；无签名 Archive 不能证明 |
+| Release signing | **PASS（build 3）** | App Store export 使用 Apple Distribution 与 App Store provisioning profile。 |
+| `get-task-allow=false` | **PASS（build 3）** | Distribution summary 与导出包 entitlement 均确认 false。 |
 
 ## 4. Web 法律页
 
@@ -110,7 +111,7 @@ Sites version 14 已部署成功；部署后 Terms 已 fresh 复核支持邮箱�
 | Apple transaction verification | 产品验证 HEAD `3f38fb9f2e16221545f19eef839f04051ded74b7` 所含 Worker 树覆盖 Apple root pin、leaf→WWDR→root、ES256、bundle/environment、月/年产品、到期与 payload 撤销字段 | **PASS（仓库离线验签）/ BLOCKED（生产）** — 未用 Sandbox/Production 真 JWS 验证；不执行 OCSP |
 | Notifications V2 | 同一产品验证树的 Entitlement DO 已实现外/内层 JWS 验签、app identity/environment/product 校验，以及 `SUBSCRIBED` / `DID_RENEW` / `EXPIRED` / `REFUND` / `REVOKE` 幂等状态更新 | **PASS（仓库）/ BLOCKED（外部）** — 生产 ASC URL、`APP_STORE_APPLE_ID`、Send Test Notification、Sandbox 续费/到期/退款/撤销验证均未执行 |
 | Managed data deletion | 设置页提供 Support ID；首次部署统一 UUID identity 大小写；`DEVICE_PRIVACY` DO 在所有 device-bearing 操作前发强一致 lease 并预登记 hash-only resource catalog，erasure 以持久 catalog/phase 有界清理，KV 项需 65 秒 exact read-back，catalog 空后需两轮间隔 65 秒的 legacy 空验证；并发 owner retry、跨-colo 延迟、空身份 suppression 与注册指针故障顺序均有测试；操作见 `managed-data-deletion-runbook.md` | **PASS（仓库）/ BLOCKED（外部）** — 尚未在真实隔离环境完成 active-lease retry、KV propagation window、两轮空扫描、幂等 erase 与 read-back 演练 |
-| Codesigning / export / upload | 2026-08-12 fresh check 有 `3 valid identities found`，包括 `Apple Distribution: ZHI LI`；通用 Debug-iphoneos build 使用 Apple Development 签名 | **BLOCKED** — 当前 HEAD 尚未 fresh 验证 Apple Distribution Archive；仍需核验 provisioning/App Store profile 与 export options，再完成 export、upload、ASC processing 和 TestFlight 验证。 |
+| Codesigning / export / upload | build 3 已完成 signed Archive、Apple Distribution/App Store export 和 upload；ASC 已显示该 build 正在处理 | **PASS（本地签名/导出/上传）/ PROCESSING（ASC）** — 等待 ASC 处理完成后选择 build 3，并继续 TestFlight/版本页验收。 |
 
 ## 6. 外部所有者操作（本次 NOT RUN）
 
