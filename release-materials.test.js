@@ -25,7 +25,9 @@ test('App Store materials describe the committed offline JWS boundary without cl
 
   const evidence = files[0];
 
-  assert.match(evidence, /`c7ec121`[\s\S]*`5ee3606`/);
+  assert.match(evidence, /3f38fb9f2e16221545f19eef839f04051ded74b7/);
+  assert.match(evidence, /产品验证 HEAD[\s\S]*Worker 部署版本[\s\S]*docs HEAD/);
+  assert.doesNotMatch(evidence, /验证材料基线[^\n]*(?:c7ec121|5ee3606)/);
   assert.doesNotMatch(evidence, /70b3a25|cba6986|61738ae/);
   assert.match(evidence, /Root tests[^\n]*\*\*PASS\*\*[^\n]*135 passed, 0 failed/i);
   assert.match(evidence, /Worker tests[^\n]*\*\*PASS\*\*[^\n]*66 passed, 0 failed/i);
