@@ -1,0 +1,167 @@
+name: App Store Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type UPLOAD_BUILD_4 to authorize the App Store upload
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-store-release
+  cancel-in-progress: false
+
+jobs:
+  archive-and-upload:
+    name: Archive and upload Build 4
+    runs-on: macos-26
+    timeout-minutes: 45
+    environment: app-store-production
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      AUTH_KEY_PATH: ${{ runner.temp }}/app-store-connect/AuthKey.p8
+      KEYCHAIN_PATH: ${{ runner.temp }}/app-store-signing.keychain-db
+      ARCHIVE_PATH: ${{ runner.temp }}/TodoNative.xcarchive
+      EXPORT_PATH: ${{ runner.temp }}/app-store-export
+
+    steps:
+      - name: Verify manual release authorization
+        env:
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/master"
+          test "$RELEASE_CONFIRMATION" = "UPLOAD_BUILD_4"
+
+      - name: Check out Build 4 source
+        uses: actions/checkout@v4
+
+      - name: Verify stable build environment
+        run: |
+          set -euo pipefail
+          test "$(sw_vers -productVersion | cut -d. -f1)" = "26"
+          test "$(xcodebuild -version | sed -n '1s/Xcode //p')" = "26.6"
+          test "$(xcodebuild -version | sed -n '2s/Build version //p')" = "17F113"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          grep -q 'CURRENT_PROJECT_VERSION: "4"' ios/Project.yml
+
+      - name: Install App Store Connect authentication key
+        env:
+          PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
+        run: |
+          set -euo pipefail
+          test -n "$PRIVATE_KEY_BASE64"
+          mkdir -p "$(dirname "$AUTH_KEY_PATH")"
+          printf '%s' "$PRIVATE_KEY_BASE64" | base64 --decode > "$AUTH_KEY_PATH"
+          chmod 600 "$AUTH_KEY_PATH"
+
+      - name: Install Apple Distribution certificate
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.APP_STORE_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APP_STORE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          test -n "$CERTIFICATE_BASE64"
+          test -n "$CERTIFICATE_PASSWORD"
+          CERTIFICATE_PATH="$RUNNER_TEMP/app-store-distribution.p12"
+          printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep -q 'Apple Distribution'
+          rm -f "$CERTIFICATE_PATH"
+
+      - name: Archive signed Build 4
+        env:
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$KEY_ID"
+          test -n "$ISSUER_ID"
+          xcodebuild \
+            -project ios/TodoNative.xcodeproj \
+            -scheme TodoNative \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$ARCHIVE_PATH" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$AUTH_KEY_PATH" \
+            -authenticationKeyID "$KEY_ID" \
+            -authenticationKeyIssuerID "$ISSUER_ID" \
+            CURRENT_PROJECT_VERSION=4 \
+            archive
+
+      - name: Validate archive provenance
+        run: |
+          set -euo pipefail
+          APP_RELATIVE_PATH="$(/usr/libexec/PlistBuddy -c 'Print :ApplicationProperties:ApplicationPath' "$ARCHIVE_PATH/Info.plist")"
+          APP_PLIST="$ARCHIVE_PATH/Products/Applications/$APP_RELATIVE_PATH/Info.plist"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :ApplicationProperties:BuildMachineOSBuild' "$ARCHIVE_PATH/Info.plist" | cut -c1-2)" = "25"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_PLIST")" = "4"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :DTXcodeBuild' "$APP_PLIST")" = "17F113"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :DTSDKBuild' "$APP_PLIST")" = "23F81a"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :DTPlatformBuild' "$APP_PLIST")" = "23F81a"
+          codesign --verify --deep --strict --verbose=2 "$ARCHIVE_PATH/Products/Applications/$APP_RELATIVE_PATH"
+
+      - name: Prepare App Store export options
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>destination</key>
+            <string>upload</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>teamID</key>
+            <string>3VTA6Z7UCM</string>
+            <key>manageAppVersionAndBuildNumber</key>
+            <false/>
+            <key>uploadSymbols</key>
+            <true/>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Upload Build 4 to App Store Connect
+        env:
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          xcodebuild -exportArchive \
+            -archivePath "$ARCHIVE_PATH" \
+            -exportPath "$EXPORT_PATH" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$AUTH_KEY_PATH" \
+            -authenticationKeyID "$KEY_ID" \
+            -authenticationKeyIssuerID "$ISSUER_ID"
+
+      - name: Record build evidence
+        if: always()
+        run: |
+          {
+            echo '### App Store Build 4'
+            echo "- Commit: $GITHUB_SHA"
+            echo "- Runner OS: $(sw_vers -productVersion) ($(sw_vers -buildVersion))"
+            echo "- Xcode: $(xcodebuild -version | tr '\n' ' ')"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove temporary authentication material
+        if: always()
+        run: |
+          security delete-keychain "$KEYCHAIN_PATH" 2>/dev/null || true
+          rm -f "$AUTH_KEY_PATH"
