@@ -46,6 +46,8 @@ test('App Store workflow uses the dedicated distribution profile without Cloud S
   assert.match(workflow, /<key>provisioningProfiles<\/key>/);
   assert.match(workflow, /<key>com\.zhili\.todo-native<\/key>\s*<string>Todo Native App Store Build 4<\/string>/);
   assert.match(workflow, /rm -f "\$PROVISIONING_PROFILE_PATH"/);
+  assert.match(workflow, /security cms -D -i "\$PROVISIONING_PROFILE_PATH" > "\$PROFILE_PLIST"/);
+  assert.doesNotMatch(workflow, /PlistBuddy[^\n]+\/dev\/stdin/);
 });
 
 test('App Store workflow uploads only after archive provenance validation', async () => {

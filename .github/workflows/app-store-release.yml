@@ -93,7 +93,9 @@ jobs:
           set -euo pipefail
           test -n "$PROVISIONING_PROFILE_BASE64"
           printf '%s' "$PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROVISIONING_PROFILE_PATH"
-          PROFILE_UUID="$(security cms -D -i "$PROVISIONING_PROFILE_PATH" | /usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin)"
+          PROFILE_PLIST="$RUNNER_TEMP/TodoNative-AppStore-Build4.plist"
+          security cms -D -i "$PROVISIONING_PROFILE_PATH" > "$PROFILE_PLIST"
+          PROFILE_UUID="$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$PROFILE_PLIST")"
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           cp "$PROVISIONING_PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
 
