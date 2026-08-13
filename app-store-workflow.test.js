@@ -57,5 +57,7 @@ test('App Store workflow initializes runner paths at runtime and resolves the ar
   assert.match(workflow, /AUTH_KEY_PATH=\$RUNNER_TEMP\/app-store-connect\/AuthKey\.p8/);
   assert.match(workflow, />> "\$GITHUB_ENV"/);
   assert.match(workflow, /APP_PLIST="\$ARCHIVE_PATH\/Products\/\$APP_RELATIVE_PATH\/Info\.plist"/);
+  assert.match(workflow, /BuildMachineOSBuild' "\$APP_PLIST"/);
+  assert.doesNotMatch(workflow, /BuildMachineOSBuild' "\$ARCHIVE_PATH\/Info\.plist"/);
   assert.doesNotMatch(workflow, /Products\/Applications\/\$APP_RELATIVE_PATH/);
 });

@@ -111,7 +111,7 @@ jobs:
           set -euo pipefail
           APP_RELATIVE_PATH="$(/usr/libexec/PlistBuddy -c 'Print :ApplicationProperties:ApplicationPath' "$ARCHIVE_PATH/Info.plist")"
           APP_PLIST="$ARCHIVE_PATH/Products/$APP_RELATIVE_PATH/Info.plist"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :ApplicationProperties:BuildMachineOSBuild' "$ARCHIVE_PATH/Info.plist" | cut -c1-2)" = "25"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :BuildMachineOSBuild' "$APP_PLIST" | cut -c1-2)" = "25"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_PLIST")" = "4"
           test "$(/usr/libexec/PlistBuddy -c 'Print :DTXcodeBuild' "$APP_PLIST")" = "17F113"
           test "$(/usr/libexec/PlistBuddy -c 'Print :DTSDKBuild' "$APP_PLIST")" = "23F81a"
