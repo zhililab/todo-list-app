@@ -42,6 +42,7 @@ jobs:
           {
             echo "AUTH_KEY_PATH=$RUNNER_TEMP/app-store-connect/AuthKey.p8"
             echo "KEYCHAIN_PATH=$RUNNER_TEMP/app-store-signing.keychain-db"
+            echo "PROVISIONING_PROFILE_PATH=$RUNNER_TEMP/TodoNative-AppStore-Build4.mobileprovision"
             echo "ARCHIVE_PATH=$RUNNER_TEMP/TodoNative.xcarchive"
             echo "EXPORT_PATH=$RUNNER_TEMP/app-store-export"
           } >> "$GITHUB_ENV"
@@ -85,6 +86,17 @@ jobs:
           security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep -q 'Apple Distribution'
           rm -f "$CERTIFICATE_PATH"
 
+      - name: Install App Store provisioning profile
+        env:
+          PROVISIONING_PROFILE_BASE64: ${{ secrets.APP_STORE_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          set -euo pipefail
+          test -n "$PROVISIONING_PROFILE_BASE64"
+          printf '%s' "$PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROVISIONING_PROFILE_PATH"
+          PROFILE_UUID="$(security cms -D -i "$PROVISIONING_PROFILE_PATH" | /usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin)"
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$PROVISIONING_PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
+
       - name: Archive signed Build 4
         env:
           KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
@@ -99,10 +111,10 @@ jobs:
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath "$ARCHIVE_PATH" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$AUTH_KEY_PATH" \
-            -authenticationKeyID "$KEY_ID" \
-            -authenticationKeyIssuerID "$ISSUER_ID" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            DEVELOPMENT_TEAM=3VTA6Z7UCM \
+            PROVISIONING_PROFILE_SPECIFIER="Todo Native App Store Build 4" \
             CURRENT_PROJECT_VERSION=4 \
             archive
 
@@ -130,9 +142,16 @@ jobs:
             <key>destination</key>
             <string>upload</string>
             <key>signingStyle</key>
-            <string>automatic</string>
+            <string>manual</string>
+            <key>signingCertificate</key>
+            <string>Apple Distribution</string>
             <key>teamID</key>
             <string>3VTA6Z7UCM</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.zhili.todo-native</key>
+              <string>Todo Native App Store Build 4</string>
+            </dict>
             <key>manageAppVersionAndBuildNumber</key>
             <false/>
             <key>uploadSymbols</key>
@@ -171,3 +190,4 @@ jobs:
         run: |
           security delete-keychain "$KEYCHAIN_PATH" 2>/dev/null || true
           rm -f "$AUTH_KEY_PATH"
+          rm -f "$PROVISIONING_PROFILE_PATH"

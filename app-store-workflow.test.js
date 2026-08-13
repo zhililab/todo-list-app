@@ -25,6 +25,7 @@ test('App Store workflow keeps credentials in secrets and cleans temporary signi
     'APP_STORE_CONNECT_PRIVATE_KEY_BASE64',
     'APP_STORE_CERTIFICATE_BASE64',
     'APP_STORE_CERTIFICATE_PASSWORD',
+    'APP_STORE_PROVISIONING_PROFILE_BASE64',
   ]) {
     assert.match(workflow, new RegExp(`secrets\\.${secret}`));
   }
@@ -33,6 +34,18 @@ test('App Store workflow keeps credentials in secrets and cleans temporary signi
   assert.match(workflow, /rm -f "\$AUTH_KEY_PATH"/);
   assert.match(workflow, /if:\s*always\(\)/);
   assert.doesNotMatch(workflow, /AuthKey_[A-Z0-9]+\.p8/);
+});
+
+test('App Store workflow uses the dedicated distribution profile without Cloud Signing', async () => {
+  const workflow = await readFile(workflowPath, 'utf8');
+
+  assert.match(workflow, /Install App Store provisioning profile/);
+  assert.match(workflow, /APP_STORE_PROVISIONING_PROFILE_BASE64/);
+  assert.match(workflow, /CODE_SIGN_STYLE=Manual/);
+  assert.match(workflow, /PROVISIONING_PROFILE_SPECIFIER="Todo Native App Store Build 4"/);
+  assert.match(workflow, /<key>provisioningProfiles<\/key>/);
+  assert.match(workflow, /<key>com\.zhili\.todo-native<\/key>\s*<string>Todo Native App Store Build 4<\/string>/);
+  assert.match(workflow, /rm -f "\$PROVISIONING_PROFILE_PATH"/);
 });
 
 test('App Store workflow uploads only after archive provenance validation', async () => {
