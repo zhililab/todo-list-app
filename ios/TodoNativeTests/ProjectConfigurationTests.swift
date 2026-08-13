@@ -7,6 +7,14 @@ final class ProjectConfigurationTests: XCTestCase {
     private let termsURL = URL(string: "https://todo-list-app.zhili1993.chatgpt.site/terms.html")!
     private let supportURL = URL(string: "https://todo-list-app.zhili1993.chatgpt.site/support.html")!
 
+    func testCompiledTargetUsesReplacementBuildNumber() {
+        XCTAssertEqual(
+            Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String,
+            "4",
+            "Build 3 was rejected by App Store Connect and must never be uploaded again."
+        )
+    }
+
     func testProjectDoesNotForceLightAppearance() throws {
         XCTAssertNil(
             Bundle.main.object(forInfoDictionaryKey: "UIUserInterfaceStyle"),
