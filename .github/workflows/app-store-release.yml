@@ -23,10 +23,6 @@ jobs:
     environment: app-store-production
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
-      AUTH_KEY_PATH: ${{ runner.temp }}/app-store-connect/AuthKey.p8
-      KEYCHAIN_PATH: ${{ runner.temp }}/app-store-signing.keychain-db
-      ARCHIVE_PATH: ${{ runner.temp }}/TodoNative.xcarchive
-      EXPORT_PATH: ${{ runner.temp }}/app-store-export
 
     steps:
       - name: Verify manual release authorization
@@ -39,6 +35,16 @@ jobs:
 
       - name: Check out Build 4 source
         uses: actions/checkout@v4
+
+      - name: Initialize secure temporary paths
+        run: |
+          set -euo pipefail
+          {
+            echo "AUTH_KEY_PATH=$RUNNER_TEMP/app-store-connect/AuthKey.p8"
+            echo "KEYCHAIN_PATH=$RUNNER_TEMP/app-store-signing.keychain-db"
+            echo "ARCHIVE_PATH=$RUNNER_TEMP/TodoNative.xcarchive"
+            echo "EXPORT_PATH=$RUNNER_TEMP/app-store-export"
+          } >> "$GITHUB_ENV"
 
       - name: Verify stable build environment
         run: |
@@ -104,13 +110,13 @@ jobs:
         run: |
           set -euo pipefail
           APP_RELATIVE_PATH="$(/usr/libexec/PlistBuddy -c 'Print :ApplicationProperties:ApplicationPath' "$ARCHIVE_PATH/Info.plist")"
-          APP_PLIST="$ARCHIVE_PATH/Products/Applications/$APP_RELATIVE_PATH/Info.plist"
+          APP_PLIST="$ARCHIVE_PATH/Products/$APP_RELATIVE_PATH/Info.plist"
           test "$(/usr/libexec/PlistBuddy -c 'Print :ApplicationProperties:BuildMachineOSBuild' "$ARCHIVE_PATH/Info.plist" | cut -c1-2)" = "25"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_PLIST")" = "4"
           test "$(/usr/libexec/PlistBuddy -c 'Print :DTXcodeBuild' "$APP_PLIST")" = "17F113"
           test "$(/usr/libexec/PlistBuddy -c 'Print :DTSDKBuild' "$APP_PLIST")" = "23F81a"
           test "$(/usr/libexec/PlistBuddy -c 'Print :DTPlatformBuild' "$APP_PLIST")" = "23F81a"
-          codesign --verify --deep --strict --verbose=2 "$ARCHIVE_PATH/Products/Applications/$APP_RELATIVE_PATH"
+          codesign --verify --deep --strict --verbose=2 "$ARCHIVE_PATH/Products/$APP_RELATIVE_PATH"
 
       - name: Prepare App Store export options
         run: |

@@ -45,3 +45,17 @@ test('App Store workflow uploads only after archive provenance validation', asyn
   assert.match(workflow, /destination<\/key>\s*<string>upload<\/string>/);
   assert.match(workflow, /manageAppVersionAndBuildNumber<\/key>\s*<false\/>/);
 });
+
+test('App Store workflow initializes runner paths at runtime and resolves the archived app once', async () => {
+  const workflow = await readFile(workflowPath, 'utf8');
+
+  assert.doesNotMatch(
+    workflow,
+    /^\s{6}[A-Z_]+:\s*\$\{\{\s*runner\./m,
+    'runner context is not available in a job-level env block',
+  );
+  assert.match(workflow, /AUTH_KEY_PATH=\$RUNNER_TEMP\/app-store-connect\/AuthKey\.p8/);
+  assert.match(workflow, />> "\$GITHUB_ENV"/);
+  assert.match(workflow, /APP_PLIST="\$ARCHIVE_PATH\/Products\/\$APP_RELATIVE_PATH\/Info\.plist"/);
+  assert.doesNotMatch(workflow, /Products\/Applications\/\$APP_RELATIVE_PATH/);
+});
