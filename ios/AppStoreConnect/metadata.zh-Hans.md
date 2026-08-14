@@ -43,6 +43,8 @@ AI Native Todo 是一款不需要注册账号的双语任务应用，帮助你�
 
 高级功能可通过月度或年度自动续订订阅解锁。应用还提供从首次启动开始计算、仅保存在本机的 7 天体验；它不是 App Store 首购优惠。实际价格、周期和可用优惠以 App Store 购买页面为准。
 
+使用条款（Apple 标准 EULA）：https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+
 AI 生成内容仅用于辅助规划，可能不准确。请在采取重要行动前自行核验。
 
 ## Path A（仅在 managed backend 发布闸门全部完成后使用）
@@ -69,6 +71,8 @@ AI Native Todo 是一款不需要注册账号的双语任务应用，帮助你�
 任务和应用设置主要保存在设备上。远程 AI 是可选能力：应用会在首次向当前接收方发送内容前说明数据范围并请求同意。你可以拒绝并继续使用本地规划器，也可以随时在设置中撤回同意。使用自己的 API Key 时，Key 保存在 iOS 钥匙串中，请求会直接发送给所选模型服务商。使用托管 AI 时，内容和随机设备标识会先发送到托管服务，再转发给披露的模型服务商。
 
 高级功能可通过月度或年度自动续订订阅解锁。应用还提供从首次启动开始计算、仅保存在本机的 7 天体验；它不是 App Store 首购优惠。实际价格、周期和可用优惠以 App Store 购买页面为准。
+
+使用条款（Apple 标准 EULA）：https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 
 AI 生成内容仅用于辅助规划，可能不准确。请在采取重要行动前自行核验。
 

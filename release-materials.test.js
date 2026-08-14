@@ -56,3 +56,16 @@ test('managed data deletion runbook is operator-only and keyed by the in-app Sup
   assert.match(contents, /erased-device/);
   assert.match(contents, /自动.*(?:注册|register).*重建/);
 });
+
+test('both App Store descriptions include the functional Apple standard EULA link', async () => {
+  const eulaURL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
+  const descriptions = await Promise.all([
+    read('./ios/AppStoreConnect/metadata.zh-Hans.md'),
+    read('./ios/AppStoreConnect/metadata.en-US.md'),
+  ]);
+
+  for (const contents of descriptions) {
+    const occurrences = contents.split(eulaURL).length - 1;
+    assert.equal(occurrences, 2, 'Path A and Path B descriptions must each include the EULA URL');
+  }
+});

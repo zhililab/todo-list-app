@@ -43,6 +43,8 @@ Tasks and app settings are primarily stored on your device. The on-device planne
 
 Premium features may be unlocked with monthly or yearly auto-renewing subscriptions. The app also includes a seven-day experience that begins on first launch and is stored only on that device; it is not an App Store introductory offer. The App Store purchase sheet controls the actual price, billing period, and any available offer.
 
+Terms of Use (Apple Standard EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+
 AI output is planning assistance and may be inaccurate. Verify important information before acting on it.
 
 ## Path A (use only after every managed-backend release gate is complete)
@@ -69,6 +71,8 @@ You can:
 Tasks and app settings are primarily stored on your device. Remote AI is optional. Before content is sent to a recipient for the first time, the app explains the data involved and asks for consent. You can decline and continue with the on-device planner, or revoke consent later in Settings. If you bring your own API key, it is stored in the iOS Keychain and requests go directly to your selected model provider. With managed AI, content and a random device identifier go first to the managed service and then to the disclosed model provider.
 
 Premium features may be unlocked with monthly or yearly auto-renewing subscriptions. The app also includes a seven-day experience that begins on first launch and is stored only on that device; it is not an App Store introductory offer. The App Store purchase sheet controls the actual price, billing period, and any available offer.
+
+Terms of Use (Apple Standard EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 
 AI output is planning assistance and may be inaccurate. Verify important information before acting on it.
 
