@@ -10,7 +10,7 @@
 - `ios/Runbook/iap-and-release-checklist.md`：IAP 与发布清单
 - `ios/AppStoreConnect/`：双语元数据、App Privacy、审核备注、截图、订阅文案与发布证据
 
-## 当前状态（2026-08-11）
+## 当前状态（2026-08-13）
 
 - [x] 核心信息架构完成：任务类型、上下文、验收标准、下一步 Prompt
 - [x] 设备本地 7 天体验 + 订阅 gating 入口完成（不是 App Store Connect Introductory Offer；设置页主入口 + 启动自动弹窗）
@@ -19,12 +19,16 @@
 - [x] Obsidian 导出面向付费态完善（分享、复制、文件名）
 - [x] Companion 伙伴 Tab（聊天 + 跨会话记忆 + 关键时刻引擎：完成庆祝每日去重/逾期轻推 + 建议动作流）
 - [x] Companion 体验升级：iMessage 风格气泡 + 打字指示器；语音输入（SFSpeechRecognizer + AVAudioEngine，双权限校验）
-- [x] AI 配额客户端（QuotaClient：无 Key 时走托管代理 `deepseek-chat`，402 映射本地化提示；register-pro 接口已接入）
-- [ ] register-pro 生产交易验证：当前 Worker 仅解析 JWS payload，未验证 Apple 签名、bundle ID、environment 或退款/撤销；完成前不得宣称托管订阅权益安全可用
+- [x] AI 配额客户端（QuotaClient：无 Key 时走托管代理，402 映射本地化提示；register-pro 接口已接入）
+- [x] Worker 端 entitlement 离线验签（WebCrypto + Apple 根证书 pin；bundle ID / environment / 产品白名单 / expiresDate / revocation 校验；App Store Server Notifications V2 回调；设备删除端点；Durable Object 强一致协调）已实现并部署，见 `ios/AppStoreConnect/release-evidence.md`
 - [x] 本地通知精确到分钟（DatePicker 时分，按期触发；任务完成自动取消；过期补发最小 60s；设置页授权状态）
 - [x] 自然语言截止时间解析：快速创建任务可识别“今天 / 明天 / 后天”、时段与时刻，以及“X 小时 / 分钟后”，并自动调度本地提醒
+- [x] 拆解目标选择器（AIGoalPicker：可搜索、doing/todo 分组、优先级排序、直接输入、VoiceOver/动态字体）
+- [x] 生产 managed AI endpoint（Release 只读 Info.plist `ManagedAIBaseURL`，URL 校验；Debug 才允许 UserDefaults 覆盖）
+- [x] App Store 发布准备：`.v2` 商品 ID 统一（Worker 白名单/ASC 一致）、`ITSAppUsesNonExemptEncryption=false`、`TodoNative.storekit`、`PrivacyInfo.xcprivacy`、中英双语提交材料
+- [x] App Store 自动上传 CI（`.github/workflows/app-store-release.yml`：macos-26 + ASC API 密钥 archive/export/upload + 元数据校验 + keychain 清理）
 - [x] 微交互与动画（打勾弹跳+闪光、按钮按压、列表过渡、统计 pop、气泡滑入/打字指示器，尊重 Reduce Motion）
-- [x] 单元测试 target 接入（TodoNativeTests，104 用例 / 14 个测试文件；包含自然语言截止时间解析）
+- [x] 单元测试 target 接入（TodoNativeTests，369 用例 / 33 个测试文件；包含自然语言截止时间解析、goal picker、工程配置）
 - [x] iOS 27 (27.0) 模拟器构建 + 启动冒烟验证通过
 - [x] 真实 AI 接口接入（OpenAI /v1/chat/completions + legacy /v1/responses，无 Key 自动本地降级；AI 工作台：智能拆解 / 复盘 / 今日计划）
 - [x] 编辑已存任务（TaskEditView）+ 清除已完成
@@ -32,7 +36,7 @@
 - [x] 4-Tab 布局：今日计划（Today）/ 任务（Tasks）/ 伙伴（Buddy）/ 设置（Settings）
 - [x] App Store Connect 提交材料工作稿与 owner-action 清单
 - [ ] App Store 构建与截图、App Privacy 最终填写、正式 TestFlight
-- [ ] 生产 managed AI endpoint、Worker KV/secrets 与安全交易验证（缺失时 Release 仅提供本地规划/BYOK，不宣称托管 AI 可用）
+- [ ] 离线验签无 OCSP、ASC Notifications V2 URL 回填、Sandbox 真交易/真机交互验证（见 release-evidence.md BLOCKED 项）
 
 ## 运行建议
 
@@ -47,7 +51,7 @@
 3. CLI 快速验证（当环境有可用 destination 时）：
    - `xcodebuild -project ios/TodoNative.xcodeproj -scheme TodoNative -destination 'generic/platform=iOS Simulator' build`
    - `xcodebuild -project ios/TodoNative.xcodeproj -scheme TodoNative -showdestinations`
-4. 单元测试（104 个用例，覆盖模型 / 任务 ViewModel / AI 计划 / Obsidian 导出 / 试用 / Companion / 通知 / 配额客户端 / 本地化 / 自然语言截止时间解析）：
+4. 单元测试（369 个用例，覆盖模型 / 任务 ViewModel / AI 计划 / Obsidian 导出 / 试用 / Companion / 通知 / 配额客户端 / goal picker / 工程配置 / 本地化 / 自然语言截止时间解析）：
    - `xcodebuild -project ios/TodoNative.xcodeproj -scheme TodoNative -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=27.0' test`
    - 或 `xcodegen generate` 后在 Xcode 中按 `Cmd+U`
 5. 先在本地确认首页与任务流可用，再接入真实 AI 与付费。
